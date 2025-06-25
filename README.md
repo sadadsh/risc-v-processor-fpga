@@ -1,10 +1,10 @@
 # RISC-V Processor for the Z7-20 FPGA
 
 A performance-optimized RISC-V processor implementation targeting the Z7-20 FPGA, including intelligent power management and adaptive branch prediction along with statistics.
-https://img.shields.io/badge/build-passing-brightgreen.svg
-https://img.shields.io/badge/license-MIT-blue.svg
-https://img.shields.io/badge/ISA-RISC--V%20RV32I-orange.svg
-https://img.shields.io/badge/platform-Zynq--7020-red.svg
+![1](https://img.shields.io/badge/build-passing-brightgreen.svg)
+![2](https://img.shields.io/badge/license-MIT-blue.svg)
+![3](https://img.shields.io/badge/ISA-RISC--V%20RV32I-orange.svg)
+![4](https://img.shields.io/badge/platform-Zynq--7020-red.svg)
 
 ## 📊 Current Status
 [Coming soon.]
