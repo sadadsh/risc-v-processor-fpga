@@ -12,7 +12,7 @@
 // - x1 to x31 are working registers.
 // - The processor can read from two registers at once and write to one register at a time.
 
-module register_file(
+module register(
     input wire clk, // The clock signal.
     input wire reset, // The reset signal (ACTIVE LOW).
     
