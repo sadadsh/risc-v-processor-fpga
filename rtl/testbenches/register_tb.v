@@ -3,7 +3,7 @@
 // PROCESSOR'S REGISTER FILE TESTBENCH
 // Engineer: Sadad Haidari
 
-module register_file_tb();
+module register_tb();
 
 // Creating test signals for us to control.
 reg clk; // Provide clock signal.
@@ -21,7 +21,7 @@ wire powerActive;
 
 // INSTANTIATE UNIT UNDER TEST
 // This is the wiring from the register file to the test bench.
-register_file uut(
+register uut(
     .clk(clk),
     .reset(reset),
     .rs1(rs1),
