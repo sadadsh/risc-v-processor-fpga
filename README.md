@@ -1,4 +1,4 @@
-# RISC-V Processor for the Z7-20 FPGA
+# RISC-V Processor with Power Management and Branch Prediction
 
 A performance-optimized RISC-V processor implementation targeting the Z7-20 FPGA, including intelligent power management and adaptive branch prediction along with statistics.
 
