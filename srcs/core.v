@@ -26,7 +26,7 @@ module core(
     // INNOVATION
     // Performance monitoring outputs.
     output wire [31:0] totalInstructions, // How many instructions have we executed?
-    output wire [31:0] totalOpsALU, // How many ALU operations performed?
+    output wire [31:0] totalOperationsALU, // How many ALU operations performed?
     output wire [31:0] totalRegAccesses, // How many register file accesses?
     output wire [7:0] currentEstimatedPower, // Current power consumption estimate?
     output wire [4:0] mostUsedReg, // Which register gets used most often?
@@ -51,6 +51,7 @@ module core(
     wire [6:0] fun7; // Additional function code for operation specification.
     wire enRegWrite; // Should we write ALU result back to register file.
     wire enALU; // Should ALU perform (ADD, SUB, etc.).
+    wire [3:0] opALU;
     wire isRT;
     wire isVI;
     // REGISTER FILE CONNECTIONS
@@ -77,6 +78,7 @@ module core(
         completeExecution = 1'b0;
     end
     
+    // Connect the decoder outputs to internal wires.
     instruction_decoder decoder (
     .instruction(instruction),
     .opcode(opcode),
@@ -91,4 +93,83 @@ module core(
     .isRT(isRT),
     .isVI(isVI)
     );
+
+    // Connects our register file and tells it what to do
+    // based on the decoded instructions.
+    register register (
+        .clk(clk),
+        .reset(reset),
+        .rs1(rs1),
+        .rs2(rs2),
+        .rd(rd),
+        .rsData1(rsData1),
+        .rsData2(rsData2),
+        .rdData(rdData),
+        .enWrite(enRegWrite),
+        .regAccessCount(regAccessCount),
+        .regWriteCount(regWriteCount),
+        .regMostUsed(regMostUsed),
+        .powerActive(regPowerActive)
+    );
+
+    // This connects our ALU and provides it with operands from
+    // the register file.
+    alu alu (
+        .clk(clk),
+        .reset(reset),
+        .operandA(rsData1),
+        .operandB(rsData2),
+        .op(opALU),
+        .enALU(enALU),
+        .result(resultALU),
+        .flagZero(flagZeroALU),
+        .operationTotal(totalOpsALU),
+        .operationMostUsed(mostUsedALU),
+        .estimatedPower(estimatedPowerALU),
+        .operationActive(activeALU)
+    );
+
+    // PROCESSOR CONTROL LOGIC
+    // Brain that orchestrates instruction execution.
+    always @(posedge clk or negedge reset) begin
+        if (!reset) begin
+            instructionCount <= 32'h0; // Clear instruction counter.
+            completeExecution <= 1'b0; // No executions right now.
+        end else begin
+            // Check if there is a valid instruction to execute.
+            if (validInstruction && isVI) begin
+                completeExecution <= 1'b0; // Starting execution.
+                if (enALU) begin
+                    completeExecution <= 1'b1; // Mark instruction complete.
+                    instructionCount <= instructionCount + 1;
+                end
+            end else begin
+                // No valid instruction, nothing is executing.
+                completeExecution <= 1'b0;
+            end
+        end
+    end
+
+    // OUTPUT ASSIGNMENTS
+    // Connect internal signals to module outputs.
+
+    // Processor Status Outputs
+    assign completeInstruction = completeExecution; // Notifies of instruction completion.
+    
+    // Performance Monitoring Outputs
+    assign totalInstructions = instructionCount;
+    assign totalOperationsALU = totalOpsALU;
+    assign totalRegAccesses = regAccessCount;
+    assign currentEstimatedPower = estimatedPowerALU;
+    assign mostUsedReg = regMostUsed;
+    assign mostUsedOpsALU = mostUsedALU;
+
+    // Debug Outputs
+    assign rs1Debug = rs1;
+    assign rs2Debug = rs2;
+    assign rdDebug = rd;
+    assign resultALUDebug = resultALU;
+    assign rsData1Debug = rsData1;
+    assign rsData2Debug = rsData2;
+
 endmodule
