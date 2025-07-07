@@ -56,7 +56,7 @@ Prerequisites are AMD Vivado and a ZYNQ-7020 FPGA development board, download th
 
 ---
 ## Contact
-**Sadad Haidari** | Computer Engineering Student | [LinkedIn](linkedin.com/in/sadadh)
+**Sadad Haidari** | Computer Engineering Student | [LinkedIn](https://linkedin.com/in/sadadh)
 
 *Built with passion for computer architecture and digital design.*
 
