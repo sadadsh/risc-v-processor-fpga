@@ -1,42 +1,45 @@
 `timescale 1ns / 1ps
 
-// SIMPLE CORE TESTBENCH
+// CORE TESTBENCH
 // Engineer: Sadad Haidari
 
-// This testbench verifies that the processor can execute real RISC-V
-// instructions.
+// This testbench simulates the core module of the RISC-V processor.
+// It tests instruction execution correctness, pipeline behavior, performance monitoring, and power management features.
 
-// 1. Provide 32-bit RISC-V instruction words to the processor.
-// 2. Processor decodes the instruction and executes it.
-// 3. Verify that the correct registers were accessed and results computed.
-// 4. Monitor performance metrics throughout execution.
+// The approach is to start with simple instructions (all using x0 register which = 0 regardless), progress to complex
+// instructions using additional registers, and test to see if the performance and power management
+// features respond to different workloads.
 
 module core_tb ();
     reg clk;
     reg reset;
-    
-    // Instruction Interface
-    reg [31:0] instruction;
-    reg validInstruction;
-
-    // Processor Output Signals
-    wire completeInstruction;
+    // INSTRUCTION INTERFACE
+    reg [31:0] instruction; // The 32-bit instruction to execute.
+    reg validInstruction; // ACTIVE HIGH when instruction is valid.
+    // PROCESSOR OUTPUT MONITORING
+    wire completeInstruction; // Goes HIGH when instruction is done executing.
     wire [31:0] totalInstructions;
     wire [31:0] totalOperationsALU;
     wire [31:0] totalRegAccesses;
     wire [7:0] currentEstimatedPower;
     wire [4:0] mostUsedReg;
     wire [3:0] mostUsedOpsALU;
+    // DEBUG SIGNAL MONITORING
+    wire [4:0] rs1Debug, rs2Debug, rdDebug; // Which registers are being used?
+    wire [31:0] resultALUDebug, rsData1Debug, rsData2Debug; // What data is being processed?
+    
+    // TEST MANAGEMENT VARIABLES
+    integer testCount;
+    integer passCount;
+    integer failCount;
 
-    // Debug Output Signals
-    wire [4:0] rs1Debug, rs2Debug, rdDebug;
-    wire [31:0] resultALUDebug;
-    wire [31:0] rsData1Debug, rsData2Debug;
+    // PERFORMANCE MONITORING VARIABLES
+    integer prevRegAccesses; // Previous register access count.
+    integer prevOpsALU; // Previous operation count.
+    integer regAccessesDelta; // Change in register accesses after each instruction.
+    integer opsALUDelta; // Change in operations after each instruction.
 
-    // Test Management Variables
-    integer testCount; // # of tests ran.
-    integer passCount; // # of tests passed.
-    integer failCount; // # of tests failed.
+    // DEVICE UNDER TEST
 
     core uut (
         .clk(clk),
@@ -53,208 +56,181 @@ module core_tb ();
         .rs1Debug(rs1Debug),
         .rs2Debug(rs2Debug),
         .rdDebug(rdDebug),
+        .resultALUDebug(resultALUDebug),
         .rsData1Debug(rsData1Debug),
         .rsData2Debug(rsData2Debug)
     );
 
-    // 100MHz CLOCK
-    initial begin
-        clk = 0; // Start with clock low.
-        forever #5 clk = ~clk; // 5ns toggles.
+    // CLOCK GENERATION 100MHz
+        initial begin
+        clk = 0;                            // Start with clock low
+        forever #5 clk = ~clk;              // Toggle every 5ns (100MHz)
     end
 
     // TESTING TASKS
     task testInstruction;
-        input [31:0] inst; // The 32-bit RISC-V instruction to test.
-        input [200*8-1:0] description; // Text description of instruction.
-        input [4:0] rdExpected; // Which register should be written to.
-        input [31:0] resultExpected; // What result we expect to see.
+        // This task sends an instruction to the core and checks the results.
+        input [31:0] inst; // The instruction to test.
+        input [200*8-1:0] description; // Description of the test.
+        input [4:0] rdExpected; // Expected destination register.
+        input [31:0] resultExpected; // Expected result in destination register.
+        input [31:0] minExpectedAccesses; // Minimum expected register accesses.
+
         begin
+            // Store counts for delta calculations.
+            prevRegAccesses = totalRegAccesses;
+            prevOpsALU = totalOperationsALU;
+            // Send instruction to processor and signal it's prepared.
             @(posedge clk);
-            instruction = instr; // Send instruction to processor.
-            validInstruction = 1; // Tell processor instruction is ready.
-
+            instruction = inst;
+            validInstruction = 1'b1;
+            // Wait for processor to complete the instruction through its pipeline.
+            wait(completeInstruction == 1'b1);
             @(posedge clk);
-            validInstruction = 0; // Clear ready signal.
-
-            wait(completeInstruction); // Waits until processor finishes.
+            // Clear the instruction valid signal.
+            validInstruction = 1'b0;
             @(posedge clk);
-
+            // Check results.
             testCount = testCount + 1;
+            regAccessesDelta = totalRegAccesses - prevRegAccesses;
+            opsALUDelta = totalOperationsALU - prevOpsALU;
 
-            $display("Instruction: %s", description);
-            $display("  Decoded: rs1 = x%d, rs2 = x%d, rd = x%d", rs1Debug, rs2Debug, rdDebug);
-            $display("  Operands: rsData1 = 0x%h, rsData2 = 0x%h", rsData1Debug, rsData2Debug);
-            $display("  Result: 0x%h -> x%d", resultALUDebug, rdDebug);
+            // DETAILED TEST RESULTS
+            $display("Test %0d: %s", testCount, description);
+            $display("  Instruction: 0x%08h", inst);
+            $display("  Decoded: rs1=%0d, rs2=%0d, rd=%0d", rs1Debug, rs2Debug, rdDebug);
+            $display("  Operands: rsData1=0x%08h, rsData2=0x%08h", rsData1Debug, rsData2Debug);
+            $display("  Result: 0x%08h -> x%0d", resultALUDebug, rdDebug);
+            $display("  Expected: 0x%08h -> x%0d", resultExpected, rdExpected);
             $display("  Power: %d", currentEstimatedPower);
+            $display("  Performance: Instructions = %0d, ALU Operations = %0d, Register Accesses = %0d", totalInstructions, totalOperationsALU, totalRegAccesses);
+            $display("  Deltas: ALU Operations = %0d, Register Accesses = %0d", opsALUDelta, regAccessesDelta);
 
-            // Check if the test passed or failed.
-            if (rdDebug == rdExpected) begin
-                $display("PASS: Correct destination register.");
+            // RESULT CHECKS
+            if (rdDebug == rdExpected && resultALUDebug == resultExpected && regAccessesDelta >= minExpectedAccesses && opsALUDelta >= 1) begin
+                $display("PASS: All checks passed!");
                 passCount = passCount + 1;
             end else begin
-                $display("FAIL: Expected rd = x%d, got x%d", rdExpected, rdDebug);
+                $display("FAIL: One or more checks failed.");
+                if (rdDebug != rdExpected)
+                    $display("  -> Expected destination register = %0d, got %0d", rdExpected, rdDebug);
+                if (resultALUDebug != resultExpected)
+                    $display("  -> Expected result = 0x%08h, got 0x%08h", resultExpected, resultALUDebug);
+                if (regAccessesDelta < minExpectedAccesses)
+                    $display("  -> Expected at least %0d register accesses, got %0d", minExpectedAccesses, regAccessesDelta);
+                if (opsALUDelta < 1)
+                    $display("  -> Expected at least 1 ALU operation, got %0d", opsALUDelta);
                 failCount = failCount + 1;
             end
+            $display("");
         end
     endtask
 
-    task setupTestData;
+    // NON-ZERO REGISTER TESTING
+    // Test instructions that use registers other than x0. This verifies correct register reads/writes and performance tracking.
+    task testNZRegisters;
         begin
-            $display("Setting up test data using ADD instructions...");
-            // Use the ALU to create test values so that we can
-            // demonstrate how real processors work, all goes throguh
-            // instructions.
-            $display("Creating tests values throguh arithmetic...");
+            $display("Testing with Non-Zero Register Values...");
+            // APPROACH
+            // Use instructions that read from registers that were written to in previous instructions.
+            // This should generate more register accesses and test read/write correctness since we are no longer using x0.
+
+            // ADD x3, x1, x2 (read from x1 and x2, write to x3).
+            // Binary: 0000000_00010_00001_000_00011_0110011
+            testInstruction(32'b00000000001000001000000110110011, "\nADD x3, x1, x2", 5'd3, 32'h0, 1);
+            
+            // SUB x4, x3, x1 (read from x3 and x1, write to x4).
+            // Binary: 0100000_00001_00011_000_00100_0110011
+            testInstruction(32'b01000000000100011000001000110011, "\nSUB x4, x3, x1", 5'd4, 32'h0, 2);
+            
+            // AND x5, x2, x3 (read from x2 and x3, write to x5).
+            // Binary: 0000000_00011_00010_111_00101_0110011  
+            testInstruction(32'b00000000001100010111001010110011, "\nAND x5, x2, x3", 5'd5, 32'h0, 2);
         end
     endtask
 
-    task testAllRT;
+    // PERFORMANCE MONITORING VERIFICATION
+    // Verifies that all our innovation are working as intended.
+    task testPerformanceMonitoring;
         begin
-            // RISC-V RT Instruction Format: |fun7|rs2|rs1|fun3|rd|opcode|
-            // For all these tests: rs1 = x0, rs2 = x0, predictable results.
-            
-            // ADD x1, x0, x0   (x1 = x0 + x0 = 0 + 0 = 0)
-            // Binary breakdown: 0000000_00000_00000_000_00001_0110011
-            testInstruction(32'b00000000000000000000000010110011, "ADD x1, x0, x0", 5'd1, 32'h0);
-            
-            // SUB x2, x0, x0   (x2 = x0 - x0 = 0 - 0 = 0)
-            // Binary breakdown: 0100000_00000_00000_000_00010_0110011
-            // Note: funct7=0100000 distinguishes SUB from ADD
-            testInstruction(32'b01000000000000000000000100110011, "SUB x2, x0, x0", 5'd2, 32'h0);
-            
-            // AND x3, x0, x0   (x3 = x0 & x0 = 0 & 0 = 0)
-            // Binary breakdown: 0000000_00000_00000_111_00011_0110011
-            // Note: funct3=111 specifies AND operation
-            testInstruction(32'b00000000000000000111000110110011, "AND x3, x0, x0", 5'd3, 32'h0);
-            
-            // OR x4, x0, x0    (x4 = x0 | x0 = 0 | 0 = 0)
-            // Binary breakdown: 0000000_00000_00000_110_00100_0110011
-            // Note: funct3=110 specifies OR operation
-            testInstruction(32'b00000000000000000110001000110011, "OR x4, x0, x0", 5'd4, 32'h0);
-            
-            // XOR x5, x0, x0   (x5 = x0 ^ x0 = 0 ^ 0 = 0)
-            // Binary breakdown: 0000000_00000_00000_100_00101_0110011
-            // Note: funct3=100 specifies XOR operation
-            testInstruction(32'b00000000000000000100001010110011, "XOR x5, x0, x0", 5'd5, 32'h0);
-            
-            // SLT x6, x0, x0   (x6 = (x0 < x0) ? 1 : 0 = (0 < 0) ? 1 : 0 = 0)
-            // Binary breakdown: 0000000_00000_00000_010_00110_0110011
-            // Note: funct3=010 specifies SLT (set less than, signed)
-            testInstruction(32'b00000000000000000010001100110011, "SLT x6, x0, x0", 5'd6, 32'h0);
-            
-            // SLTU x7, x0, x0  (x7 = (x0 < x0) ? 1 : 0 = (0 < 0) ? 1 : 0 = 0, unsigned comparison)
-            // Binary breakdown: 0000000_00000_00000_011_00111_0110011
-            // Note: funct3=011 specifies SLTU (set less than, unsigned)
-            testInstruction(32'b00000000000000000011001110110011, "SLTU x7, x0, x0", 5'd7, 32'h0);
-            
-            $display("All basic RT instructions tested!");
+            $display("Testing Performance Monitoring Features...");
+            $display(" Final Performance Statistics:");
+            $display("  Total Instructions Executed: %0d", totalInstructions);
+            $display("  Total ALU Operations: %0d", totalOperationsALU);
+            $display("  Total Register Accesses: %0d", totalRegAccesses);
+            $display("  Most Used Register: x%0d", mostUsedReg);
+            $display("  Most Used ALU Operation: %0d", mostUsedOpsALU);
+            $display("  Final Estimated Power: %d", currentEstimatedPower);
+            $display("");
         end
     endtask
-
-    task testPM;
-        begin
-            $display("Testing performance monitoring features...");
-            $display("Testing performance monitoring features...");
-            
-            // Execute several ADD instructions to build up statistics.
-            // This tests that our performance counters are working correctly.
-            repeat(5) begin  // Execute 5 ADD instructions.
-                testInstruction(32'b00000000000000000000000010110011, "Performance test ADD", 5'd1, 32'h0);
-            end
-            
-            // Execute several SUB instructions.
-            // This should make SUB operations show up in our statistics.
-            repeat(3) begin  // Execute 3 SUB instructions.
-                testInstruction(32'b01000000000000000000000100110011, "Performance test SUB", 5'd2, 32'h0);
-            end
-            
-            // Display the performance monitoring results
-            // This shows our innovation in action!
-            $display("Performance monitoring results:");
-            $display("  Instructions executed: %d", totalInstructions); // Should be 8 (5 ADD + 3 SUB).
-            $display("  ALU operations: %d", totalOperationsALU); // Should match instructions.
-            $display("  Register accesses: %d", totalRegAccesses); // Should be higher (multiple per instruction).
-            $display("  Most used register: x%d", mostUsedReg); // Should show which register accessed most.
-            $display("  Most used ALU op: %d", mostUsedOpsALU); // Should be 0 (ADD) since we did 5 ADDs vs 3 SUBs.
-        end
-    endtask
-
-
-    // BEGIN TEST PROCEDURE
+    
+    // MAIN TEST SEQUENCE
     initial begin
         testCount = 0;
         passCount = 0;
         failCount = 0;
-        reset = 0;
+        reset = 1'b1;
         instruction = 32'h0;
-        validInstruction = 32'h0;
+        validInstruction = 1'b0;
+
+        // RESET SEQUENCE
         #20;
-        reset = 1;
+        reset = 1'b0; // Assert reset (ACTIVE LOW).
+        #10;
+        reset = 1'b1; // Deassert reset.
         #10;
 
         $display("=========================================");
-        $display("        First Processor Test Suite       ");
+        $display("          CORE MODULE TESTBENCH          ");
         $display("=========================================");
 
-        // TEST 1: Initialize Registers with Data
-        $display("Test 1: Setting up Initial Register Values");
-        // Manual data loading onto registers for testing.
-        // In a real processor, this would come from memory or instructions.
-        // For testing, I'm going to use ADD instructions to set up values.
+        // TEST 1: BASIC RT INSTRUCTIONS
+        $display("Testing Basic RT-Instructions");
+        // Test each basic instruction type with expected results.
+        testInstruction(32'b00000000000000000000000010110011, "\nADD x1, x0, x0", 5'd1, 32'h0, 0);
+        testInstruction(32'b01000000000000000000000100110011, "\nSUB x2, x0, x0", 5'd2, 32'h0, 0);
+        testInstruction(32'b00000000000000000111000110110011, "\nAND x3, x0, x0", 5'd3, 32'h0, 0);
+        testInstruction(32'b00000000000000000110001000110011, "\nOR x4, x0, x0", 5'd4, 32'h0, 0);
+        testInstruction(32'b00000000000000000100001010110011, "\nXOR x5, x0, x0", 5'd5, 32'h0, 0);
 
-        // ADD x1, x0, x0  -> x1 = 0 + 0 = 0 (but we'll verify the instruction works)
-        testInstruction(32'b00000000000000000000000010110011, "ADD x1, x0, x0", 5'd1, 32'h0);
+        // TEST 2: NON-ZERO REGISTER ACCESS VERIFICATION
+        testNZRegisters();
 
-        // TEST 2: Basic ADD Operations
-        $display("\\n Test 2: Basic ADD Instructions");
-        setupTestData();
+        // TEST 3: PERFORMANCE MONITORING VERIFICATION
+        testPerformanceMonitoring();
 
-        // TEST 3: Complete Instruction Set
-        $display("\\n Test 3: All RT Instructions");
-        testAllRT();
-
-        // TEST 4: Performance Monitoring
-        $display("\\n Test 4: Performance Monitoring")
-        testPM();
-
-        // FINAL RESULTS
-        $display("\\n=========================================");
-        $display("         Processor Test Summary          ");
+        // FINAL TEST RESULTS
+        $display("=========================================");
+        $display("        CORE TESTBENCH SUMMARIZED        ");
         $display("=========================================");
         $display("Total Tests: %d", testCount);
         $display("Passed: %d", passCount);
         $display("Failed: %d", failCount);
-        $display("Success Rate: %d%%", (passCount * 100) / testCount);
 
-        if (failCount == 0) begin
-                $display("ALL TESTS PASSED! ALU is prepared for processor integration!");
-        end else begin
-        $display("Some tests have failed. Check implementation.");
+        // CALCULATE AND DISPLAY SUCCESS RATE
+        if (testCount > 0) begin
+            $display("Success Rate: %d%%", (passCount * 100) / testCount);
         end
-
-        $display("\\nFinal Performance Statistics:");
-        $display("  Total instructions executed: %d", totalInstructions);
-        $display("  Total ALU operations: %d", totalOperationsALU);
-        $display("  Total register accesses: %d", totalRegAccesses);
-        $display("  Most used register: x%d", mostUsedReg);
-        $display("  Most used ALU operation: %d", mostUsedOpsALU);
         
-        $display("=========================================");
+        // OVERALL RESULT ANALYSIS
+        if (failCount == 0) begin
+            // ALL TESTS PASSED - CELEBRATION!
+            $display("PASS: All tests passed!");
+        end else begin
+            // SOME TESTS FAILED - DEBUGGING NEEDED
+            $display("FAIL: %d tests failed. Bugs are still present. (._.)", failCount);
+        end
         $finish;
     end
 
     // CONTINUOUS MONITORING BLOCK
-    // Runs throughout simulation so that real-time feedback
-    // of the processor is given.
-
     always @(posedge clk) begin
         if (validInstruction) begin
-            $display("  [CORE] Executing Instruction: 0x%h", instruction);
+            $display("   [CORE] Executing 0x%08h", instruction);
         end
         if (completeInstruction) begin
-            $display("  [CORE] Instruction Complete.");
+            $display("   [CORE] Completed instruction. Register Access = %0d, ALU Operations = %0d, Estimated Power = %d", totalRegAccesses, totalOperationsALU, currentEstimatedPower);
         end
     end
-
 endmodule

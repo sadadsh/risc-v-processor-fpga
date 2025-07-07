@@ -1,175 +1,224 @@
-// SIMPLE PROCESSOR CORE
+
+// PROCESSOR CORE
 // Engineer: Sadad Haidari
 
-// This will connect the register file + ALU + instruction decoder for the complete RISC-V execution.
+// ARCHITECTURE
+// This processor implements a 4-stage pipeline:
+// S00 [IDLE]            | Waiting for new instruction.
+// S01 [DECODE/READ]     | Break instruction into parts.
+// S10 [EXECUTE]         | ALU performs computations.
+// S11 [WRITEBACK]       | Store result back to register file.
 
-// Instruction -> Decoder -> Register File -> ALU -> Register File:
-//      1. Decoder breaks apart instruction into control signals.
-//      2. Register files reads source operands.
-//      3. ALU performs computations on operands.
-//      4. Register file writes ALU result to destination.
-
-// This processor includes performance monitoring throughout, tracking instruction count,
-// ALU usage, register usage, monitors power consumption in real-time, and identifies usage
-// patterns for optimization.
-
-module core(
+module core (
     input wire clk,
     input wire reset,
     // INSTRUCTION INPUT INTERFACE
-    // How instructions get into the processor.
-    input wire [31:0] instruction, // 32-bit RISC-V instruction to execute.
-    input wire validInstruction, // Is the instruction valid/ready?
+    input wire [31:0] instruction, // 32-bit RISC-V instruction.
+    input wire validInstruction, // Signal that instruction is prepared to execute.
     // PROCESSOR STATUS OUTPUTS
-    // Tells outside world what is happening.
-    output wire completeInstruction, // Has current instruction finished executing?
-    // INNOVATION
-    // Performance monitoring outputs.
-    output wire [31:0] totalInstructions, // How many instructions have we executed?
-    output wire [31:0] totalOperationsALU, // How many ALU operations performed?
-    output wire [31:0] totalRegAccesses, // How many register file accesses?
-    output wire [7:0] currentEstimatedPower, // Current power consumption estimate?
-    output wire [4:0] mostUsedReg, // Which register gets used most often?
-    output wire [3:0] mostUsedOpsALU, // Which ALU operations is used the most?
+    output wire completeInstruction, // Signal that current instruction finished.
+    // PERFORMANCE MONITORING OUTPUTS
+    output wire [31:0] totalInstructions,
+    output wire [31:0] totalOperationsALU,
+    output wire [31:0] totalRegAccesses,
+    output wire [7:0] currentEstimatedPower,
+    output wire [4:0] mostUsedReg,
+    output wire [3:0] mostUsedOpsALU,
     // DEBUG OUTPUTS
-    // Helps for testing and learning.
-    output wire [4:0] rs1Debug, // Which source register 1 is being read?
-    output wire [4:0] rs2Debug, // Which source register 2 is being read?
+    output wire [4:0] rs1Debug, // Which source register is being read?
+    output wire [4:0] rs2Debug, // Which source register is being read?
     output wire [4:0] rdDebug, // Which destination register is being written?
-    output wire [31:0] resultALUDebug, // What did the ALU compute?
-    output wire [31:0] rsData1Debug, // What data came from register 1?
-    output wire [31:0] rsData2Debug // What data came from register 2?
-    );
-    
-    // INTERNAL WIRES CONNECTING MODULES
-    // Each wire carries a specific signal between modules.
-    // INSTRUCTION DECODER OUTPUTS
-    // These come FROM the decoder and go TO other modules.
-    wire [6:0] opcode; // What type of instruction?
-    wire [4:0] rd, rs1, rs2; // Which registers to read from and write to?
-    wire [2:0] fun3; // Function code that helps specify operation.
-    wire [6:0] fun7; // Additional function code for operation specification.
-    wire enRegWrite; // Should we write ALU result back to register file.
-    wire enALU; // Should ALU perform (ADD, SUB, etc.).
-    wire [3:0] opALU;
-    wire isRT;
-    wire isVI;
-    // REGISTER FILE CONNECTIONS
-    // These wires carry data to and from the register file.
-    wire [31:0] rsData1, rsData2; // Data read from source registers.
-    wire [31:0] regAccessCount;
-    wire [31:0] regWriteCount;
-    wire [4:0] regMostUsed;
-    wire regPowerActive;
-    // ALU CONNECTIONS
-    wire [31:0] resultALU;
-    wire flagZeroALU;
-    wire [31:0] totalOpsALU;
-    wire [3:0] mostUsedALU;
-    wire [7:0] estimatedPowerALU;
-    wire activeALU;
-    // PROCESSOR STATE REGISTERS
-    // These track the processor's overall state.
-    reg [31:0] instructionCount; // How many instructions have we completed?
-    reg completeExecution; // Has the current instruction finished executing?
-    // Initialize processor state when simulation starts.
-    initial begin
-        instructionCount = 32'h0;
-        completeExecution = 1'b0;
-    end
-    
-    // Connect the decoder outputs to internal wires.
-    instruction_decoder decoder (
-    .instruction(instruction),
-    .opcode(opcode),
-    .rd(rd),
-    .fun3(fun3),
-    .rs1(rs1),
-    .rs2(rs2),
-    .fun7(fun7),
-    .enRegWrite(enRegWrite),
-    .enALU(enALU),
-    .op(op),
-    .isRT(isRT),
-    .isVI(isVI)
-    );
+    output wire [31:0] rsData1Debug, // What data did we read from it?
+    output wire [31:0] rsData2Debug, // What data did we read from it?
+    output wire [31:0] resultALUDebug // What result did the unit compute?
+);
 
-    // Connects our register file and tells it what to do
-    // based on the decoded instructions.
-    register register (
-        .clk(clk),
-        .reset(reset),
-        .rs1(rs1),
-        .rs2(rs2),
-        .rd(rd),
-        .rsData1(rsData1),
-        .rsData2(rsData2),
-        .rdData(rdData),
-        .enWrite(enRegWrite),
-        .regAccessCount(regAccessCount),
-        .regWriteCount(regWriteCount),
-        .regMostUsed(regMostUsed),
-        .powerActive(regPowerActive)
-    );
+// INTERNAL WIRE DECLARATIONS
+// This will connect to the three main modules: the decoder, register, and arithmetic unit.
+wire [6:0] opcode; // Bits [6:0] and tells us instruction format like ADD, SUB, etc.
+wire [4:0] rd; // Bits [11:7] tells us which register to write result to.
+wire [4:0] rs1; // Bits [19:15] tells us first source register to read from.
+wire [4:0] rs2; // Bits [24:20] tells us second source register to read from.
+wire [2:0] fun3; // Bits [14:12] further specifies the operation.
+wire [6:0] fun7; // Bits [31:25] further specifies the operation.
+wire enRegWrite;
+wire enALU;
+wire [3:0] opALU; // ALU operation code.
+wire isRT; // Is it an R-type instruction?
+wire isVI; // Is this a valid instruction?
 
-    // This connects our ALU and provides it with operands from
-    // the register file.
-    alu alu (
-        .clk(clk),
-        .reset(reset),
-        .operandA(rsData1),
-        .operandB(rsData2),
-        .op(opALU),
-        .enALU(enALU),
-        .result(resultALU),
-        .flagZero(flagZeroALU),
-        .operationTotal(totalOpsALU),
-        .operationMostUsed(mostUsedALU),
-        .estimatedPower(estimatedPowerALU),
-        .operationActive(activeALU)
-    );
+// REGISTER FILE CONNECTIONS
+// The register file stores 32 registers (x0 to x31), each 32 bits wide and provides performance monitoring.
+wire [31:0] rsData1, rsData2; // Data read from source registers.
+wire [31:0] regAccessCount, regWriteCount;
+wire [4:0] regMostUsed;
+wire regPowerActive;
 
-    // PROCESSOR CONTROL LOGIC
-    // Brain that orchestrates instruction execution.
-    always @(posedge clk or negedge reset) begin
-        if (!reset) begin
-            instructionCount <= 32'h0; // Clear instruction counter.
-            completeExecution <= 1'b0; // No executions right now.
-        end else begin
-            // Check if there is a valid instruction to execute.
-            if (validInstruction && isVI) begin
-                completeExecution <= 1'b0; // Starting execution.
-                if (enALU) begin
-                    completeExecution <= 1'b1; // Mark instruction complete.
-                    instructionCount <= instructionCount + 1;
+// ALU CONNECTIONS
+// The ALU performs arithmetic and logic operations, also with performance monitoring.
+wire [31:0] resultALU; // Result from ALU operation.
+wire flagZeroALU; // Is the result zero?
+wire [31:0] totalOpsALU;
+wire [3:0] mostUsedALU;
+wire [7:0] estimatedPowerALU;
+wire activeALU;
+
+// PROCESSOR STATE REGISTERS
+// These registers track the overall state of the processor.
+reg [31:0] instructionCount; // Total instructions executed.
+reg completeExecution; // Signal that current instruction finished.
+
+// PIPELINE STATE TRACKING
+reg executionActive; // Is an instruction being processed right now?
+reg [1:0] executionStage; // Current stage in the 4-stage pipeline.
+// Reminder: [2'b00 IDLE] [2'b01 DECODE/READ] [2'b10 EXECUTE] [2'b11 WRITEBACK]
+
+// REGISTER ACCESS CONTROL SIGNALS
+// These control when the register file should count accesses for accurate performance monitoring.
+wire regReadEnable;
+wire regWriteEnable;
+// Control Logic
+assign regReadEnable = executionActive && ((executionStage == 2'b01) || (executionStage == 2'b10));
+assign regWriteEnable = enRegWrite && executionActive && (executionStage == 2'b11);
+
+// PROCESSOR INSTANTIATIONS
+// It is time now. Yes, time to connect the modules together.
+// 1. Instruction Decoder
+instruction_decoder decoderUnit (
+    .instruction(instruction), // The 32-bit instruction to decode.
+    .opcode(opcode), // Bits [6:0] and tells us instruction format like ADD, SUB, etc.
+    .rd(rd), // Bits [11:7] tells us which register to write result to.
+    .rs1(rs1), // Bits [19:15] tells us first source register to read from.
+    .rs2(rs2), // Bits [24:20] tells us second source register to read from.
+    .fun3(fun3), // Bits [14:12] further specifies the operation.
+    .fun7(fun7), // Bits [31:25] further specifies the operation.
+    .enRegWrite(enRegWrite), // Enable write to register file.
+    .enALU(enALU), // Enable ALU operation.
+    .opALU(opALU), // ALU operation code.
+    .isRT(isRT), // Is it an R-type instruction?
+    .isVI(isVI) // Is this a valid instruction?
+);
+// 2. Register File
+register registerUnit (
+    .clk(clk), // The clock signal.
+    .reset(reset), // The reset signal (ACTIVE LOW).
+    .rs1(rs1), // First source register to read from (PORT 1).
+    .rs2(rs2), // Second source register to read from (PORT 2).
+    .rsData1(rsData1), // The data from first register.
+    .rsData2(rsData2), // The data from second register.
+    .enWrite(regWriteEnable), // Enable write to register (ACTIVE HIGH).
+    .rd(rd), // Holds which register we choose to write to.
+    .rdData(resultALU), // Holds the data we will write into that register.
+    .regAccessCount(regAccessCount), // The number of times we've read registers.
+    .regWriteCount(regWriteCount), // The number of times we've written registers.
+    .regMostUsed(regMostUsed), // The register that gets used most often.
+    .powerActive(regPowerActive) // Is the register being used right now?
+);
+// 3. Arithmetic Logic Unit
+alu aluUnit (
+    .clk(clk), // The clock signal.
+    .reset(reset), // The reset signal (ACTIVE LOW).
+    .operandA(rsData1), // First operand for ALU operation.
+    .operandB(rsData2), // Second operand for ALU operation.
+    .op(opALU), // ALU operation code.
+    .enALU(enALU && executionActive && (executionStage == 2'b10)), // Enable ALU operation.
+    .result(resultALU), // Result from ALU operation.
+    .flagZero(flagZeroALU), // Is the result zero?
+    .operationTotal(totalOpsALU), // Total ALU operations performed.
+    .operationMostUsed(mostUsedALU), // Most used ALU operation.
+    .estimatedPower(estimatedPowerALU), // Estimated power consumption.
+    .operationActive(activeALU) // Is the ALU active right now?
+);
+
+// PROCESSOR CONTROL LOGIC
+// This is the brain of the processor, managing the pipeline stages and performance monitoring.
+// Runs on each clock tick.
+always @(posedge clk) begin
+    if (!reset) begin
+        // RESET CONDITION
+        // Clear all state when reset is low and active.
+        instructionCount <= 32'h0;
+        completeExecution <= 1'b0;
+        executionActive <= 1'b0;
+        executionStage <= 2'b00; // Go to IDLE stage.
+    end else begin
+        // NORMAL
+        completeExecution <= 1'b0; // Default to not complete.
+        // PIPELINE STATE MACHINE
+        // Each of these cases handles one pipleine stage and determines what to do next.
+        case (executionStage)
+            // IDLE STAGE
+            2'b00: begin
+                // Wait for a valid instruction to start processing.
+                if (validInstruction && isVI) begin
+                    // New valid instruction received.
+                    executionActive <= 1'b1; // Start processing.
+                    executionStage <= 2'b01; // Move to DECODE/READ stage.
+                end else begin
+                    executionActive <= 1'b0; // Remain IDLE stage.
                 end
-            end else begin
-                // No valid instruction, nothing is executing.
-                completeExecution <= 1'b0;
             end
-        end
+            // DECODE/READ STAGE
+            2'b01: begin
+                // Decoder is breaking apart the instruction.
+                // Register file is reading source operands from the registers.
+                executionStage <= 2'b10; // Move to EXECUTE stage.
+                // Execution remains active; therefore, executionActive = 1'b1 still.
+            end
+            // EXECUTE STAGE
+            2'b10: begin
+                // ALU is performing the computation.
+                executionStage <= 2'b11; // Move to WRITEBACK stage.
+                // Execution remains active; therefore, executionActive = 1'b1 still.
+            end
+            // WRITEBACK STAGE
+            2'b11: begin
+                // Register file is writing the result back to the destination register.
+                // This is the last stage.
+                completeExecution <= 1'b1; // Signal that instruction is complete.
+                instructionCount <= instructionCount + 1; // Increment instruction count.
+                
+                if (validInstruction && isVI) begin
+                    // Another instruction, immediate start for next instruction.
+                    executionStage <= 2'b01; // Move to DECODE/READ stage.
+                    // Execution remains active; therefore, executionActive = 1'b1 still.
+                end else begin
+                    // No new instruction, go back to IDLE stage.
+                    executionActive <= 1'b0; // Stop processing.
+                    executionStage <= 2'b00; // Move to IDLE stage.
+                end
+            end
+            default: begin
+                // Should never happen, but if it does, reset to IDLE.
+                executionActive <= 1'b0;
+                executionStage <= 2'b00;
+            end
+        endcase
     end
+end
+
+    // POWER MANAGEMENT CALCULATION
+    // Calculate total power consumption through summation of all components.
+    wire [7:0] totalEstimatedPower;
+    assign totalEstimatedPower = estimatedPowerALU + (regPowerActive ? 8'd5 : 8'd0) + (executionActive ? 8'd3 : 8'd1);
+    // This adds the ALU power, register power (5 units if active), and base processor power (3 units if active, else 1).
 
     // OUTPUT ASSIGNMENTS
-    // Connect internal signals to module outputs.
-
-    // Processor Status Outputs
-    assign completeInstruction = completeExecution; // Notifies of instruction completion.
+    // 1. Processor Status Outputs
+    assign completeInstruction = completeExecution; // Signal that current instruction finished.
+    // 2. Performance Monitoring Outputs
+    assign totalInstructions = instructionCount; // Total instructions executed.
+    assign totalOperationsALU = totalOpsALU; // Total ALU operations performed.
+    assign totalRegAccesses = regAccessCount; // Total register accesses.
+    assign currentEstimatedPower = totalEstimatedPower; // Current estimated power consumption.
+    assign mostUsedReg = regMostUsed; // The register that gets used most often.
+    assign mostUsedOpsALU = mostUsedALU; // Most used ALU operation.
+    // 3. Debug Outputs
+    assign rs1Debug = rs1; // Which source register is being read?
+    assign rs2Debug = rs2; // Which source register is being read?
+    assign rdDebug = rd; // Which destination register is being written?
+    assign rsData1Debug = rsData1; // What data did we read from it?
+    assign rsData2Debug = rsData2; // What data did we read from it?
+    assign resultALUDebug = resultALU; // What result did the unit compute?
     
-    // Performance Monitoring Outputs
-    assign totalInstructions = instructionCount;
-    assign totalOperationsALU = totalOpsALU;
-    assign totalRegAccesses = regAccessCount;
-    assign currentEstimatedPower = estimatedPowerALU;
-    assign mostUsedReg = regMostUsed;
-    assign mostUsedOpsALU = mostUsedALU;
-
-    // Debug Outputs
-    assign rs1Debug = rs1;
-    assign rs2Debug = rs2;
-    assign rdDebug = rd;
-    assign resultALUDebug = resultALU;
-    assign rsData1Debug = rsData1;
-    assign rsData2Debug = rsData2;
-
 endmodule
