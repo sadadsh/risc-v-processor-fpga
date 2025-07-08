@@ -1,4 +1,4 @@
-# RISC-V Processor with Power Management and Branch Prediction
+# RVZEN | A RISC-V Processor with Power Management and Branch Prediction
 
 *A performance-optimized RISC-V processor with intelligent power management and adaptive branch prediction.*
 
