@@ -17,13 +17,16 @@ This is a custom RISC-V processor implementation targeting the Z7-20 FPGA, featu
 - ✅ Branch Predictor Test-bench: Comprehensive, realistic scenarios covered with >75% prediction accuracy.
 - ✅ Instruction Decoder: Enhanced, fully verified, 100% test pass rate.
 - ✅ Instruction Decoder Test-bench: All instruction types and edge cases tested.
-- 🚧 Power Manager: Design phase.
+- ✅ Power Optimizer: Fully implemented, tested, and passing all testbenches (100% pass rate).
+- ✅ Power Optimizer Test-bench: Comprehensive, covers all power management, DVFS, gating, and emergency scenarios.
+- ✅ Workload Classifier: Fully implemented, AI-inspired workload monitoring.
+- ✅ Workload Classifier Test-bench: Covers all workload types, adaptation, and learning scenarios.
 - 📋 Complete Core: Planned.
 
 ## 🏗️ Architecture
 [Will add more detail and a block diagram soon.]
 - Modular, test-driven Verilog design.
-- Adaptive branch prediction and power management integrated into the core pipeline.
+- Adaptive branch prediction, AI-inspired workload classification, and power management integrated into the core pipeline.
 - All modules verified with custom testbenches and simulation.
 
 ## 🛠️ Development Environment
@@ -39,8 +42,9 @@ build-project.tcl       = Vivado Project Build Script.
 ### 📚 Features
 [More in development.]
 - Adaptive Confidence Branch Predictor: Custom branch prediction algorithm with confidence tracking, ensemble prediction, and local/global history.
-- Intelligent Power Management: Predictive power gating and dynamic voltage scaling (in progress).
-- Performance Monitoring: Real-time instruction and power analysis.
+- Intelligent Power Management: Predictive power gating, dynamic voltage/frequency scaling, and emergency handling (fully functional).
+- AI-Inspired Workload Classifier: Real-time workload classification, adaptive learning, and pattern recognition for optimal power management.
+- Performance Monitoring: Real-time instruction, workload, and power analysis.
 - Professional Implementation: Standard design practices and documentation.
 
 ## 🔬 Technical Highlights
@@ -60,6 +64,19 @@ build-project.tcl       = Vivado Project Build Script.
 - Handles all edge cases and invalid instructions.
 - 100% test pass rate on all testbench scenarios.
 - [Simulation Results (Instruction Decoder)](docs/results/enhanced-decoder-simulation-results.md)
+
+### Power Optimizer
+- Fully implemented, tested, and verified (100% test pass rate).
+- Implements predictive power optimization, DVFS, power gating, thermal management, and emergency handling.
+- Adaptive learning and workload-aware power management.
+- [Simulation Results (Power Optimizer)](docs/results/power-optimizer-simulation-results.md)
+
+### Workload Classifier
+- Fully implemented, AI-inspired workload monitoring and classification using real-time feature extraction, pattern recognition, and adaptive learning (inspired by clustering and ensemble methods).
+- Real-time feature extraction, pattern recognition, and adaptive learning.
+- Achieved >90% overall classification accuracy in comprehensive simulation.
+- 100% test pass rate on all workload formats and adaptation scenarios.
+- [Simulation Results (Workload Classifier)](docs/results/workload_classifier-simulation-results.md)
 
 ### Register
 - 32 registers, 32-bit each and RISC-V compliant.
