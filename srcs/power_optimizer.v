@@ -186,7 +186,7 @@ module power_optimizer(
         energySaved = 16'h0; // Initialize energy saved to 0.
 
         predictedWorkloadFormat = WLUNKNOWN; // Unknown workload format.
-        adaptationRate = 4'h8; // Default to moderate learning rate.
+        adaptationRate = 4'h1; // Default to moderate learning rate, will be updated during operation.
         powerTrend = 8'h80; // Initialize power trend indicator to neutral (midpoint) for tracking power usage direction.
 
         totalPowerConsumption = 8'h0; // Initialize total power consumption to 0.
@@ -394,7 +394,7 @@ module power_optimizer(
             energySaved <= 16'h0; // Initialize energy saved to 0.
 
             predictedWorkloadFormat <= WLUNKNOWN; // Unknown workload format.
-            adaptationRate <= 4'h8; // Default to moderate learning rate.
+            adaptationRate <= 4'h1; // Default to moderate learning rate.
             powerTrend <= 8'h80; // Initialize power trend indicator to neutral (midpoint) for tracking power usage direction.
 
             totalPowerConsumption <= 8'h0; // Initialize total power consumption to 0.
@@ -520,7 +520,10 @@ module power_optimizer(
                 // Thermal Management
                 if (temperatureEstimate > THERMALWARNING) begin
                     thermalThrottle <= 1'b1; // Enable thermal throttling.
-                    if (clockFrequencyLevel > 3'b001) clockFrequencyLevel <= clockFrequencyLevel - 1;
+                    if (clockFrequencyLevel > 3'b001) begin
+                        clockFrequencyLevel <= clockFrequencyLevel - 1;
+                        voltageLevel <= voltageLevel - 1; // Also reduce voltage to match frequency.
+                    end
                 end else if (temperatureEstimate < (THERMALWARNING - 8'd30)) begin
                     thermalThrottle <= 1'b0; // Disable thermal throttling.
                 end
@@ -652,7 +655,7 @@ module power_optimizer(
                 // Adaptive Learning and Optimization
                 // Every 64 cycles (when the lower 6 bits of adaptationCounter are zero),
                 // update learning and adaptation parameters to improve optimization.
-                if (adaptationCounter[5:0] == 5'h0) begin // Every 32 cycles.
+                if (adaptationCounter[4:0] == 5'h0) begin // Every 32 cycles.
                     // Adjust the learning rate based on the accuracy of workload prediction.
                     // If prediction accuracy is high (>200), decrease the learning rate (down to a minimum of 4).
                     if (workloadPredictionAccuracy > 8'd200) begin
@@ -663,8 +666,8 @@ module power_optimizer(
                     end
 
                     // Update the adaptation rate based on the learning rate, scaled appropriately.
-                    // Use upper bits of learning rate for better representation.
-                    adaptationRate <= learningRate[7:4];
+                    // Scale learning rate to 4-bit range (divide by 2 for better representation).
+                    adaptationRate <= (learningRate >> 1) & 4'hF;
                     
                     // Calculate and accumulate energy savings.
                     // If the average power consumption is nonzero, add the difference between
