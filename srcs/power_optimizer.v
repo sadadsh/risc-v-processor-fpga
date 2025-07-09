@@ -109,8 +109,8 @@ module power_optimizer(
 
     // OPTIMIZATION PARAMETERS
     // We need to define the parameters for optimization because it allows us to make decisions based on the current state.
-    localparam THERMALWARNING = 8'd200; // Warning temperature.
-    localparam THERMALCRITICAL = 8'd230; // Critical temperature.
+    localparam THERMALWARNING = 8'd150; // Warning temperature.
+    localparam THERMALCRITICAL = 8'd180; // Critical temperature.
     localparam POWERBUDGETMARGIN = 8'd20; // Power budget margin.
     localparam ADAPTATIONWINDOW = 6'd32; // Learning window size.
     localparam EFFICIENCYTARGET = 8'd180; // Target efficiency score.
@@ -277,10 +277,15 @@ module power_optimizer(
         // The following section applies power gating savings to the total power consumption.
         // Power gating is a technique used to reduce power usage by turning off the power supply to specific processor components when they are not needed.
         // For each component that is power gated, we subtract its typical power draw from the total power consumption.
-        if (powerGateALU) totalPowerConsumption = totalPowerConsumption - 8'd15;            // Subtract ALU power when ALU is power gated.
-        if (powerGateRegister) totalPowerConsumption = totalPowerConsumption - 8'd8;        // Subtract register file power when registers are power gated.
-        if (powerGateBranchPredictor) totalPowerConsumption = totalPowerConsumption - 8'd5; // Subtract branch predictor power when it is power gated.
-        if (powerGateCache) totalPowerConsumption = totalPowerConsumption - 8'd12;          // Subtract cache power when cache is power gated.
+        // IMPORTANT: Prevent underflow by checking if we have enough power to subtract.
+        if (powerGateALU && totalPowerConsumption >= 8'd15) 
+            totalPowerConsumption = totalPowerConsumption - 8'd15;            // Subtract ALU power when ALU is power gated.
+        if (powerGateRegister && totalPowerConsumption >= 8'd8) 
+            totalPowerConsumption = totalPowerConsumption - 8'd8;             // Subtract register file power when registers are power gated.
+        if (powerGateBranchPredictor && totalPowerConsumption >= 8'd5) 
+            totalPowerConsumption = totalPowerConsumption - 8'd5;             // Subtract branch predictor power when it is power gated.
+        if (powerGateCache && totalPowerConsumption >= 8'd12) 
+            totalPowerConsumption = totalPowerConsumption - 8'd12;            // Subtract cache power when cache is power gated.
 
         currentTotalPower = totalPowerConsumption; // Update the current total power consumption.
     end
@@ -647,7 +652,7 @@ module power_optimizer(
                 // Adaptive Learning and Optimization
                 // Every 64 cycles (when the lower 6 bits of adaptationCounter are zero),
                 // update learning and adaptation parameters to improve optimization.
-                if (adaptationCounter[5:0] == 6'h0) begin // Every 64 cycles.
+                if (adaptationCounter[5:0] == 5'h0) begin // Every 32 cycles.
                     // Adjust the learning rate based on the accuracy of workload prediction.
                     // If prediction accuracy is high (>200), decrease the learning rate (down to a minimum of 4).
                     if (workloadPredictionAccuracy > 8'd200) begin
@@ -657,8 +662,9 @@ module power_optimizer(
                         learningRate <= (learningRate < 8'h20) ? learningRate + 8'h04 : 8'h20;
                     end
 
-                    // Update the adaptation rate to match the lower 4 bits of the learning rate.
-                    adaptationRate <= learningRate[3:0];
+                    // Update the adaptation rate based on the learning rate, scaled appropriately.
+                    // Use upper bits of learning rate for better representation.
+                    adaptationRate <= learningRate[7:4];
                     
                     // Calculate and accumulate energy savings.
                     // If the average power consumption is nonzero, add the difference between
