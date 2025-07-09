@@ -60,7 +60,7 @@ module workload_classifier (
     // FEATURE EXTRACTION PARAMETERS
     localparam WINDOWSIZE = 32; // Reduced for faster response
     localparam PATTERNDEPTH = 16; // Depth number of patterns to track.
-    localparam CONFIDENCETHRESHOLD = 4; // Changed from 6 to 4 for faster response
+    localparam CONFIDENCETHRESHOLD = 3; // Lowered for faster response and better idle detection
 
     // INSTRUCTION PATTERN TRACKING
     reg [6:0] instructionWindow [0:WINDOWSIZE-1]; // Recent instruction operation codes.
@@ -179,7 +179,7 @@ module workload_classifier (
     // FEATURE EXTRACTION LOGIC
     // This runs continuously and extracts meaningful features from processor activity.
     always @(*) begin
-        if (activeInstructionCount >= 4) begin
+        if (activeInstructionCount >= 3) begin
             computeToll = (computeOperationCount * 200) / activeInstructionCount;
             memToll = (memOperationCount * 200) / activeInstructionCount;
             controlToll = (branchOperationCount * 200) / activeInstructionCount;
@@ -187,9 +187,9 @@ module workload_classifier (
             if (memToll > 255) memToll = 255;
             if (controlToll > 255) controlToll = 255;
         end else if (activeInstructionCount > 0) begin
-            computeToll = computeOperationCount * 100;  // More conservative scaling.
-            memToll = memOperationCount * 100;
-            controlToll = branchOperationCount * 100;
+            computeToll = computeOperationCount * 120;  // More aggressive scaling for low activity
+            memToll = memOperationCount * 120;
+            controlToll = branchOperationCount * 120;
             if (computeToll > 255) computeToll = 255;
             if (memToll > 255) memToll = 255;
             if (controlToll > 255) controlToll = 255;
@@ -198,12 +198,12 @@ module workload_classifier (
             memToll = 8'h0;
             controlToll = 8'h0;
         end
-        // Enhanced complexity calculation for irregular detection.
+        // Enhanced complexity calculation for irregular detection - much less aggressive
         if (activeInstructionCount >= 2) begin
-            complexPattern = ((irregularCount * 180) / activeInstructionCount) + (totalPatternChanges[6:0]);
+            complexPattern = ((irregularCount * 120) / activeInstructionCount) + (totalPatternChanges[5:0]);
             if (complexPattern > 255) complexPattern = 255;
         end else begin
-            complexPattern = irregularCount * 50;
+            complexPattern = irregularCount * 30; // Much reduced for less aggressive irregular detection
             if (complexPattern > 255) complexPattern = 255;
         end
         // Adaptive learning rate
@@ -397,20 +397,20 @@ module workload_classifier (
             end
             // Classification Logic Section
             if (classificationTimer[2:0] == 3'h0) begin
-                // Exit WLUNKNOWN faster just need 2 active instructions minimum.
+                // Improved idle detection with much lower thresholds
                 if (activeInstructionCount < 2 || classificationCount < 1) begin
                     workloadFormat <= WLUNKNOWN;
                     workloadConfidence <= 4;
-                end else if (activeInstructionCount < 2 || idleCount > 25) begin
+                end else if (activeInstructionCount < 4 || idleCount > 15) begin
                     workloadFormat <= WLIDLE;
                     workloadConfidence <= 8;
                 end else begin
                     // Debug output to understand classification decisions.
                     $display("[CLASSIFY] Active Instructions = %0d, Compute = %0d, Memory = %0d, Control = %0d, Sequential = %0d, Irregular = %0d, Locality = %0d, Complex = %0d, Previous = %0d", 
                             activeInstructionCount, computeToll, memToll, controlToll, sequentialCount, irregularCount, dataLocalityScore, complexPattern, workloadFormat);
-                    // 1. IRREGULAR: Most aggressive, with hysteresis.
-                    if ((irregularCount > (sequentialCount + 1) && complexPattern > 100 && dataLocalityScore < 80) ||
-                        (workloadFormat == WLIRREGULAR && irregularCount > sequentialCount)) begin
+                    // 1. IRREGULAR: Much less aggressive, prioritize mixed over irregular
+                    if ((irregularCount > (sequentialCount + 5) && complexPattern > 150 && dataLocalityScore < 40) ||
+                        (workloadFormat == WLIRREGULAR && irregularCount > (sequentialCount + 4))) begin
                         workloadFormat <= WLIRREGULAR;
                         workloadConfidence <= 8;
                         $display("[CLASSIFY] -> IRREGULAR (Hysteresis = %0d, Irregular = %0d, Sequential = %0d, Complex = %0d, Locality = %0d)", workloadFormat == WLIRREGULAR, irregularCount, sequentialCount, complexPattern, dataLocalityScore);
@@ -439,12 +439,15 @@ module workload_classifier (
                         workloadConfidence <= 7;
                         $display("[CLASSIFY] -> CONTROL (Control = %0d dominates)", controlToll);
                     end
-                    // 6. MIXED
-                    else if ((computeToll > 50 && memToll > 50 && (computeToll - memToll < 40) && (memToll - computeToll < 40)) ||
-                             (computeToll > 50 && controlToll > 40 && (computeToll - controlToll < 50)) ||
-                             (memToll > 50 && controlToll > 40 && (memToll - controlToll < 50))) begin
+                    // 6. MIXED: Much more permissive thresholds, prioritize over irregular
+                    else if ((computeToll > 30 && memToll > 30 && (computeToll - memToll < 80) && (memToll - computeToll < 80)) ||
+                             (computeToll > 30 && controlToll > 25 && (computeToll - controlToll < 90)) ||
+                             (memToll > 30 && controlToll > 25 && (memToll - controlToll < 90)) ||
+                             (computeToll > 25 && memToll > 25 && controlToll > 25 && 
+                              (computeToll - memToll < 100) && (memToll - controlToll < 100) && (computeToll - controlToll < 100)) ||
+                             (computeToll > 50 && memToll > 50 && controlToll > 30)) begin
                         workloadFormat <= WLMIXED;
-                        workloadConfidence <= 6;
+                        workloadConfidence <= 7;
                         $display("[CLASSIFY] -> MIXED (Compute = %0d, Memory = %0d, Control = %0d)", computeToll, memToll, controlToll);
                     end
                     // Fallback
@@ -462,9 +465,9 @@ module workload_classifier (
                 
                 classificationCount <= classificationCount + 1;
                 
-                // Improve confidence for stable classifications.
-                if (workloadFormat == previousWLF && stableCounter > 2) begin
-                    if (workloadConfidence < 14) workloadConfidence <= workloadConfidence + 2;
+                // Improve confidence for stable classifications - reduced hysteresis
+                if (workloadFormat == previousWLF && stableCounter > 1) begin
+                    if (workloadConfidence < 14) workloadConfidence <= workloadConfidence + 1;
                     else workloadConfidence <= 15;
                 end
                 
@@ -514,7 +517,7 @@ module workload_classifier (
     // OUTPUT VALIDATION
     // Classification is valid when we have sufficient confidence and data.
     assign classificationValid = (workloadConfidence >= CONFIDENCETHRESHOLD) &&
-                                 (activeInstructionCount >= 4) &&
+                                 (activeInstructionCount >= 2) &&
                                  (classificationCount > 0);
 
 endmodule

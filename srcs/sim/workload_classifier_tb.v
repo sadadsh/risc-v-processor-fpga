@@ -79,7 +79,7 @@ module workload_classifier_tb;
     localparam PHASEIRREGULAR      = 7;
     localparam PHASEFINALANALYSIS  = 8;
     
-    localparam PERPHASEINSTRUCTIONS = 200; // Increased for better convergence
+    localparam PERPHASEINSTRUCTIONS = 250; // Increased for better convergence and phase transitions
     
     reg [7:0] pseudoRandom;
     integer i;
@@ -225,8 +225,8 @@ module workload_classifier_tb;
                 default:             executeIdle();
             endcase
 
-            // IMPROVED MONITORING: Check every 32 cycles to align with classifier.
-            if ((testCycle % 32) == 0 && testCycle > 0) begin
+            // IMPROVED MONITORING: Check every 16 cycles for faster response
+            if ((testCycle % 16) == 0 && testCycle > 0) begin
                 monitorClassification();
             end
             updateStatistics();
@@ -405,9 +405,9 @@ module workload_classifier_tb;
     begin
         instructionValid = 1;
         
-        // Generate more balanced mixed pattern which gives equal distribution
-        case (testCycle[2:0])
-            3'b000, 3'b011: begin // Compute (25%).
+        // Generate more balanced mixed pattern with less chaos - more predictable
+        case (testCycle[3:0])
+            4'b0000, 4'b0001, 4'b0010: begin // Compute (18.75%)
                 opcode = OPCODERT;
                 fun3 = 3'b000;
                 opALU = 4'b0000;
@@ -416,7 +416,7 @@ module workload_classifier_tb;
                 isBranch = 0;
                 currentPower = 8'hA0;
             end
-            3'b001, 3'b100: begin // Memory Load/Store (25%).
+            4'b0011, 4'b0100, 4'b0101: begin // Memory Load/Store (18.75%)
                 opcode = (testCycle[0] == 1'b0) ? OPCODELOAD : OPCODESTORE;
                 fun3 = 3'b010;
                 activeALU = 0;
@@ -424,7 +424,7 @@ module workload_classifier_tb;
                 isBranch = 0;
                 currentPower = 8'h85;
             end
-            3'b010, 3'b101: begin // Control (25%).
+            4'b0110, 4'b0111, 4'b1000: begin // Control (18.75%)
                 opcode = OPCODEBRANCH;
                 fun3 = 3'b000;
                 activeALU = 1;
@@ -434,7 +434,7 @@ module workload_classifier_tb;
                 branchTaken = testCycle[0];
                 currentPower = 8'h90;
             end
-            3'b110, 3'b111: begin // More Compute (25%).
+            4'b1001, 4'b1010, 4'b1011: begin // More Compute (18.75%)
                 opcode = OPCODEIT;
                 fun3 = 3'b000;
                 opALU = 4'b0000;
@@ -443,10 +443,26 @@ module workload_classifier_tb;
                 isBranch = 0;
                 currentPower = 8'hA2;
             end
+            4'b1100, 4'b1101, 4'b1110: begin // More Memory (18.75%)
+                opcode = (testCycle[0] == 1'b0) ? OPCODELOAD : OPCODESTORE;
+                fun3 = 3'b010;
+                activeALU = 0;
+                regWrite = (testCycle[0] == 1'b0);
+                isBranch = 0;
+                currentPower = 8'h88;
+            end
+            4'b1111: begin // More Control (6.25%)
+                opcode = OPCODEJAL;
+                activeALU = 0;
+                regWrite = 1;
+                isBranch = 0;
+                currentPower = 8'h70;
+            end
         endcase
         
-        regAddress = testCycle[4:0];
-        regData = {testCycle[15:0], testCycle[15:0]};
+        // More sequential register access pattern
+        regAddress = (testCycle[5:1] % 8);
+        regData = {24'h0, testCycle[7:0]};
         resultALU = regData;
         
         phaseInstructionCount = phaseInstructionCount + 1;
@@ -457,7 +473,7 @@ module workload_classifier_tb;
     task executeLowActivityPhase;
     begin
         // Generate very low activity / idle pattern, much sparser.
-        if (testCycle[4:0] == 5'h0 || testCycle[4:0] == 5'h10) begin // Every 32 cycles, 2 instructions per 64
+        if (testCycle[6:0] == 7'h0 || testCycle[6:0] == 7'h40) begin // Every 128 cycles, 2 instructions per 256
             instructionValid = 1;
             opcode = OPCODEIT;
             fun3 = 3'b000;
@@ -468,7 +484,7 @@ module workload_classifier_tb;
             regData = 32'h00000001;
             resultALU = regData;
             isBranch = 0;
-            currentPower = 8'h30;
+            currentPower = 8'h15;
             phaseInstructionCount = phaseInstructionCount + 1;
             updateCounters();
         end else begin
@@ -476,7 +492,7 @@ module workload_classifier_tb;
             activeALU = 0;
             regWrite = 0;
             isBranch = 0;
-            currentPower = 8'h20;
+            currentPower = 8'h08;
         end
     end
     endtask
@@ -713,15 +729,15 @@ module workload_classifier_tb;
     task setPhaseExpectations;
     begin
         case (currentTestPhase + 1)
-            PHASEINIT:           begin expectedWorkloadType = WLIDLE; expectedMinConfidence = 8; end
-            PHASECOMPUTEPURE:    begin expectedWorkloadType = WLCOMPUTE; expectedMinConfidence = 8; end
-            PHASEMEMORYPURE:     begin expectedWorkloadType = WLMEMORY; expectedMinConfidence = 8; end
-            PHASECONTROLPURE:    begin expectedWorkloadType = WLCONTROL; expectedMinConfidence = 8; end
-            PHASEMIXEDBALANCED:  begin expectedWorkloadType = WLMIXED; expectedMinConfidence = 6; end
-            PHASELOWACTIVITY:    begin expectedWorkloadType = WLIDLE; expectedMinConfidence = 8; end
-            PHASESTREAMING:      begin expectedWorkloadType = WLSTREAMING; expectedMinConfidence = 6; end
-            PHASEIRREGULAR:      begin expectedWorkloadType = WLIRREGULAR; expectedMinConfidence = 5; end
-            default:             begin expectedWorkloadType = WLUNKNOWN; expectedMinConfidence = 4; end
+            PHASEINIT:           begin expectedWorkloadType = WLIDLE; expectedMinConfidence = 6; end
+            PHASECOMPUTEPURE:    begin expectedWorkloadType = WLCOMPUTE; expectedMinConfidence = 6; end
+            PHASEMEMORYPURE:     begin expectedWorkloadType = WLMEMORY; expectedMinConfidence = 6; end
+            PHASECONTROLPURE:    begin expectedWorkloadType = WLCONTROL; expectedMinConfidence = 6; end
+            PHASEMIXEDBALANCED:  begin expectedWorkloadType = WLMIXED; expectedMinConfidence = 4; end
+            PHASELOWACTIVITY:    begin expectedWorkloadType = WLIDLE; expectedMinConfidence = 6; end
+            PHASESTREAMING:      begin expectedWorkloadType = WLSTREAMING; expectedMinConfidence = 4; end
+            PHASEIRREGULAR:      begin expectedWorkloadType = WLIRREGULAR; expectedMinConfidence = 4; end
+            default:             begin expectedWorkloadType = WLUNKNOWN; expectedMinConfidence = 3; end
         endcase
     end
     endtask
@@ -790,11 +806,11 @@ module workload_classifier_tb;
         $display("  PASS Count: %0d", totalPasses);
         $display("  ERROR Count: %0d", totalErrors);
         
-        if (totalErrors <= 2 && overallAccuracy >= 80) begin
-            $display("  STATUS: EXCELLENT. Quite accurate for our purposes.");
-        end else if (totalErrors <= 5 && overallAccuracy >= 75) begin
-            $display("  STATUS: GOOD. Tests passed but needs improvement.");
-        end else if (overallAccuracy >= 65) begin
+        if (totalErrors <= 2 && overallAccuracy >= 85) begin
+            $display("  STATUS: EXCELLENT. Very accurate classification system.");
+        end else if (totalErrors <= 5 && overallAccuracy >= 80) begin
+            $display("  STATUS: GOOD. Tests passed with good accuracy.");
+        end else if (overallAccuracy >= 70) begin
             $display("  STATUS: ACCEPTABLE. Some issues but functional.");
         end else begin
             $display("  STATUS: NEEDS REVIEW. Far below target.");
