@@ -416,7 +416,8 @@ module enhanced_core (
         .predictedWorkloadFormat(predictedWorkloadFormat),
         .adaptationRate(optimizerAdaptationRate),
         .powerTrend(powerConsumptionTrend),
-        .powerOptimizationActive(optimizationActive)
+        .powerOptimizationActive(optimizationActive),
+        .powerState(powerState)
     );
 
     // MAIN PROCESSOR CONTROL LOGIC
