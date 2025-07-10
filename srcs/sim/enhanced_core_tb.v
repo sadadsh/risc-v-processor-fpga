@@ -76,51 +76,51 @@ module enhanced_core_tb();
     wire [7:0] powerTrend;
 
     // TESTBENCH CONTROL VARIABLES
-    integer testPhase;
-    integer instructionCount;
-    integer passCount;
-    integer failCount;
-    integer cycleCount;
-    integer phaseInstructionCount;
+    integer testPhase;              // Current test phase identifier.
+    integer instructionCount;       // Total instructions executed across all phases.
+    integer passCount;              // Number of successful test checks.
+    integer failCount;              // Number of failed test checks.
+    integer cycleCount;             // Total clock cycles elapsed.
+    integer phaseInstructionCount;  // Instructions executed in current phase.
     
     // TEST INSTRUCTION MEMORY
-    reg [31:0] testInstructions [0:255];
-    integer instructionIndex;
-    integer currentPhaseInstructions;
+    reg [31:0] testInstructions [0:255];  // Array to store test instruction patterns.
+    integer instructionIndex;              // Current instruction index in memory.
+    integer currentPhaseInstructions;     // Instructions executed in current phase.
 
     // PERFORMANCE TRACKING VARIABLES
-    reg [31:0] previousInstructions;
-    reg [31:0] previousBranches;
-    reg [31:0] previousCorrectPredictions;
-    reg [7:0] maxPowerObserved;
-    reg [7:0] minPowerObserved;
-    reg [7:0] maxTemperatureObserved;
-    reg [15:0] totalEnergySaved;
+    reg [31:0] previousInstructions;      // Previous instruction count for comparison.
+    reg [31:0] previousBranches;          // Previous branch count for comparison.
+    reg [31:0] previousCorrectPredictions; // Previous correct predictions count.
+    reg [7:0] maxPowerObserved;           // Maximum power consumption observed.
+    reg [7:0] minPowerObserved;           // Minimum power consumption observed.
+    reg [7:0] maxTemperatureObserved;     // Maximum temperature observed.
+    reg [15:0] totalEnergySaved;          // Total energy saved through optimization.
 
     // TEST PHASE DEFINITIONS
-    localparam PHASERESET = 0;
-    localparam PHASEBASICARITHMETIC = 1;
-    localparam PHASEIMMEDIATEOPS = 2;
-    localparam PHASEBRANCHTRAINING = 3;
-    localparam PHASECOMPUTEWORKLOAD = 4;
-    localparam PHASECONTROLWORKLOAD = 5;
-    localparam PHASEMIXEDWORKLOAD = 6;
-    localparam PHASEPOWERSTRESS = 7;
-    localparam PHASETHERMALSTRESS = 8;
-    localparam PHASEPERFORMANCEMODE = 9;
-    localparam PHASEBATTERYCONSERVATION = 10;
-    localparam PHASEFINALANALYSIS = 11;
-    localparam PHASECOMPLETE = 12;
+    localparam PHASERESET = 0;              // Reset and initialization phase.
+    localparam PHASEBASICARITHMETIC = 1;    // Basic arithmetic operations testing.
+    localparam PHASEIMMEDIATEOPS = 2;       // Immediate instruction testing.
+    localparam PHASEBRANCHTRAINING = 3;     // Branch prediction training testing.
+    localparam PHASECOMPUTEWORKLOAD = 4;    // Compute intensive workload testing.
+    localparam PHASECONTROLWORKLOAD = 5;    // Control flow intensive workload testing.
+    localparam PHASEMIXEDWORKLOAD = 6;      // Mixed workload characteristics testing.
+    localparam PHASEPOWERSTRESS = 7;        // Power budget stress testing.
+    localparam PHASETHERMALSTRESS = 8;      // Thermal stress testing.
+    localparam PHASEPERFORMANCEMODE = 9;    // Performance mode testing.
+    localparam PHASEBATTERYCONSERVATION = 10; // Battery conservation mode testing.
+    localparam PHASEFINALANALYSIS = 11;     // Final analysis and stabilization.
+    localparam PHASECOMPLETE = 12;          // Test completion phase.
 
     // WORKLOAD FORMAT CONSTANTS
-    localparam WLUNKNOWN        = 3'b000;
-    localparam WLCOMPUTE        = 3'b001;
-    localparam WLMEMORY         = 3'b010;
-    localparam WLCONTROL        = 3'b011;
-    localparam WLMIXED          = 3'b100;
-    localparam WLIDLE           = 3'b101;
-    localparam WLSTREAMING      = 3'b110;
-    localparam WLIRREGULAR      = 3'b111;
+    localparam WLUNKNOWN        = 3'b000;  // Unknown or unclassified workload.
+    localparam WLCOMPUTE        = 3'b001;  // Compute intensive workload.
+    localparam WLMEMORY         = 3'b010;  // Memory intensive workload.
+    localparam WLCONTROL        = 3'b011;  // Control flow intensive workload.
+    localparam WLMIXED          = 3'b100;  // Mixed workload characteristics.
+    localparam WLIDLE           = 3'b101;  // Idle or very light workload.
+    localparam WLSTREAMING      = 3'b110;  // Streaming data workload.
+    localparam WLIRREGULAR      = 3'b111;  // Irregular or unpredictable workload.
 
     // INSTANTIATE DEVICE UNDER TEST
     enhanced_core dut (
@@ -176,17 +176,19 @@ module enhanced_core_tb();
     );
 
     // CLOCK GENERATION
+    // Generate a continuous clock signal for the testbench.
     initial begin
         clk = 0;
         forever #(CLKPERIOD/2) clk = ~clk;
     end
 
     // CONTINUOUS MONITORING
+    // Monitor and track performance metrics during test execution.
     always @(posedge clk) begin
         if (reset) begin
             cycleCount <= cycleCount + 1;
             
-            // Track power consumption
+            // Track power consumption extremes.
             if (currentTotalPower > maxPowerObserved) begin
                 maxPowerObserved <= currentTotalPower;
             end
@@ -194,12 +196,12 @@ module enhanced_core_tb();
                 minPowerObserved <= currentTotalPower;
             end
 
-            // Track temperature
+            // Track temperature extremes.
             if (temperatureEstimate > maxTemperatureObserved) begin
                 maxTemperatureObserved <= temperatureEstimate;
             end
 
-            // Track energy savings
+            // Track energy savings accumulation.
             totalEnergySaved <= energySaved;
         end
     end
@@ -207,6 +209,7 @@ module enhanced_core_tb();
     // TESTBENCH TASKS
 
     // Initialize Test Environment
+    // Set up initial test conditions and reset all counters.
     task initializeTest;
         begin
             reset = 1'b0;
@@ -231,17 +234,18 @@ module enhanced_core_tb();
             maxTemperatureObserved = 0;
             totalEnergySaved = 0;
 
-            // Initialize instruction memory with test patterns
+            // Initialize instruction memory with test patterns.
             initializeInstructionMemory();
         end
     endtask
 
     // Reset Sequence
+    // Perform a proper reset sequence to initialize the DUT.
     task resetSequence;
         begin
             $display("Time: %0t | Starting reset sequence", $time);
             
-            // Initialize all inputs before reset
+            // Initialize all inputs before reset.
             instruction = 32'h00000000;
             validInstruction = 1'b0;
             powerBudget = 8'hC0;
@@ -249,11 +253,11 @@ module enhanced_core_tb();
             batteryLevel = 8'hFF;
             performanceMode = 1'b0;
             
-            // Apply reset
+            // Apply reset for multiple clock cycles.
             reset = 1'b0;
             repeat (10) @(posedge clk);
             
-            // Release reset
+            // Release reset and allow stabilization.
             reset = 1'b1;
             repeat (10) @(posedge clk);
             
@@ -262,6 +266,7 @@ module enhanced_core_tb();
     endtask
 
     // IMPROVED Execute Single Instruction with Timeout
+    // Execute a single instruction with timeout protection and detailed logging.
     task executeInstruction;
         input [31:0] instr;
         input [20*8-1:0] description;
@@ -273,7 +278,7 @@ module enhanced_core_tb();
             instruction = instr;
             validInstruction = 1'b1;
 
-            // Wait for instruction completion with timeout
+            // Wait for instruction completion with timeout protection.
             while (!instructionComplete && timeout_counter < 200) begin
                 @(posedge clk);
                 timeout_counter = timeout_counter + 1;
@@ -293,12 +298,13 @@ module enhanced_core_tb();
             @(posedge clk);
             validInstruction = 1'b0;
             
-            // Small delay between instructions to allow pipeline to settle
+            // Small delay between instructions to allow pipeline to settle.
             repeat (2) @(posedge clk);
         end
     endtask
 
     // Initialize Test Instruction Memory
+    // Populate the instruction memory with various test patterns.
     task initializeInstructionMemory;
         integer i;
         begin
@@ -330,7 +336,7 @@ module enhanced_core_tb();
             testInstructions[18] = 32'b00000000000100010010000110110011; // SLT x3, x2, x1
             testInstructions[19] = 32'b00000000001100010100001000110011; // XOR x4, x2, x3
 
-            // Fill remaining slots with simple patterns
+            // Fill remaining slots with simple patterns for extended testing.
             for (i = 20; i < 256; i = i + 1) begin
                 case (i % 8)
                     0: testInstructions[i] = 32'b00000000001000001000000010110011; // ADD
@@ -347,6 +353,7 @@ module enhanced_core_tb();
     endtask
 
     // IMPROVED Execute Test Phase with proper termination
+    // Execute a complete test phase with controlled instruction flow and monitoring.
     task executeTestPhase;
         input integer phase;
         input integer numInstructions;
@@ -356,26 +363,26 @@ module enhanced_core_tb();
             $display("Time: %0t | === PHASE %0d: Starting ===", $time, phase);
             currentPhaseInstructions = 0;
             
-            // Determine instruction pattern based on phase
+            // Determine instruction pattern based on phase type.
             case (phase)
-                PHASEBASICARITHMETIC: baseInstructionIndex = 0;   // Use instructions 0-4
-                PHASEIMMEDIATEOPS:    baseInstructionIndex = 5;   // Use instructions 5-9
-                PHASEBRANCHTRAINING:  baseInstructionIndex = 10;  // Use instructions 10-15
-                PHASECOMPUTEWORKLOAD: baseInstructionIndex = 16;  // Use instructions 16-19
-                PHASECONTROLWORKLOAD: baseInstructionIndex = 10;  // Use branch instructions
-                PHASEMIXEDWORKLOAD:   baseInstructionIndex = 0;   // Use mixed instructions
-                default:              baseInstructionIndex = 0;   // Default to arithmetic
+                PHASEBASICARITHMETIC: baseInstructionIndex = 0;   // Use instructions 0-4.
+                PHASEIMMEDIATEOPS:    baseInstructionIndex = 5;   // Use instructions 5-9.
+                PHASEBRANCHTRAINING:  baseInstructionIndex = 10;  // Use instructions 10-15.
+                PHASECOMPUTEWORKLOAD: baseInstructionIndex = 16;  // Use instructions 16-19.
+                PHASECONTROLWORKLOAD: baseInstructionIndex = 10;  // Use branch instructions.
+                PHASEMIXEDWORKLOAD:   baseInstructionIndex = 0;   // Use mixed instructions.
+                default:              baseInstructionIndex = 0;   // Default to arithmetic.
             endcase
 
             for (i = 0; i < numInstructions && testPhase != PHASECOMPLETE; i = i + 1) begin
-                // Select instruction based on phase pattern
+                // Select instruction based on phase pattern with wraparound.
                 instructionIndex = baseInstructionIndex + (i % 10);
                 if (instructionIndex >= 256) instructionIndex = instructionIndex % 256;
                 
                 executeInstruction(testInstructions[instructionIndex], "Phase Instruction");
                 currentPhaseInstructions = currentPhaseInstructions + 1;
                 
-                // Periodic checks during phase execution
+                // Periodic checks during phase execution for monitoring.
                 if ((i % 10) == 9) begin
                     checkPhaseProgress(phase);
                 end
@@ -387,13 +394,14 @@ module enhanced_core_tb();
     endtask
 
     // Check phase progress and status
+    // Monitor phase execution and validate basic functionality.
     task checkPhaseProgress;
         input integer phase;
         begin
             $display("Time: %0t | Phase %0d Progress: Instructions=%0d, Power=%0d, Workload=%0d", 
                     $time, phase, totalInstructions, currentTotalPower, currentWorkloadFormat);
             
-            // Check for basic functionality
+            // Check for basic functionality indicators.
             if (totalInstructions > 0 && currentTotalPower > 0) begin
                 passCount = passCount + 1;
             end else begin
@@ -404,6 +412,7 @@ module enhanced_core_tb();
     endtask
 
     // Generate Final Report
+    // Create a comprehensive test report with all performance metrics.
     task generateFinalReport;
         integer integerIPC, fractionIPC;
         begin
@@ -463,18 +472,19 @@ module enhanced_core_tb();
     endtask
 
     // MAIN TEST SEQUENCE with proper flow control
+    // Execute the complete test sequence with all phases and stress testing.
     initial begin
         $display("================================================================");
         $display("    ENHANCED RISC-V PROCESSOR CORE COMPREHENSIVE TESTBENCH      ");
         $display("================================================================");
 
-        // Initialize test environment
+        // Initialize test environment.
         initializeTest();
         
-        // Reset sequence
+        // Reset sequence.
         resetSequence();
 
-        // Execute test phases with controlled instruction flow
+        // Execute test phases with controlled instruction flow.
         testPhase = PHASEBASICARITHMETIC;
         executeTestPhase(testPhase, INSTRUCTIONSPERTEST);
 
@@ -493,7 +503,7 @@ module enhanced_core_tb();
         testPhase = PHASEMIXEDWORKLOAD;
         executeTestPhase(testPhase, INSTRUCTIONSPERTEST);
 
-        // Environmental stress tests with reduced instruction counts
+        // Environmental stress tests with reduced instruction counts.
         testPhase = PHASEPOWERSTRESS;
         powerBudget = 8'h50; // Reduce power budget
         executeTestPhase(testPhase, INSTRUCTIONSPERTEST/2);
@@ -504,14 +514,14 @@ module enhanced_core_tb();
         executeTestPhase(testPhase, INSTRUCTIONSPERTEST/2);
         thermalReading = 8'h64; // Restore normal temperature
 
-        // Final stabilization phase
+        // Final stabilization phase.
         testPhase = PHASEFINALANALYSIS;
         repeat (100) @(posedge clk); // Allow systems to stabilize
 
-        // Mark test as complete
+        // Mark test as complete.
         testPhase = PHASECOMPLETE;
 
-        // Generate comprehensive final report
+        // Generate comprehensive final report.
         generateFinalReport();
 
         $display("\nTime: %0t | All tests completed successfully!", $time);
@@ -519,10 +529,12 @@ module enhanced_core_tb();
     end
 
     // CYCLE COUNTER AND TIMEOUT PROTECTION
+    // Initialize cycle counter for timeout protection.
     initial begin
         cycleCount = 0;
     end
 
+    // Global timeout protection to prevent infinite simulation.
     initial begin
         #(CLKPERIOD * TESTCYCLES);
         $display("ERROR: Testbench timed out after %d cycles", TESTCYCLES);
@@ -532,6 +544,7 @@ module enhanced_core_tb();
     end
 
     // REAL-TIME PERFORMANCE MONITORING
+    // Provide periodic performance snapshots during test execution.
     always @(posedge clk) begin
         if (reset && (cycleCount % 500) == 0 && cycleCount > 0) begin
             $display("\nTime: %0t | === PERFORMANCE SNAPSHOT (Cycle %d) ===", $time, cycleCount);
@@ -542,18 +555,20 @@ module enhanced_core_tb();
     end
 
     // ENHANCED DEADLOCK DETECTION with phase awareness
-    reg [31:0] lastActivityTime;
-    reg [31:0] lastInstructionCount;
+    // Monitor for potential deadlock conditions and attempt recovery.
+    reg [31:0] lastActivityTime;      // Timestamp of last activity.
+    reg [31:0] lastInstructionCount;  // Last instruction count for comparison.
     
     always @(posedge clk) begin
+        // Update activity tracking when any activity is detected.
         if (instructionComplete || validInstruction || (pipelineStage != 0) || (totalInstructions != lastInstructionCount)) begin
             lastActivityTime <= $time;
             lastInstructionCount <= totalInstructions;
         end
         
-        // Only check for deadlock if we're not in the completion phase
+        // Only check for deadlock if we're not in the completion phase.
         if (testPhase != PHASECOMPLETE && testPhase != PHASEFINALANALYSIS) begin
-            // Check for deadlock (no activity for 2000ns)
+            // Check for deadlock (no activity for 2000ns).
             if (($time - lastActivityTime) > 2000 && $time > 1000) begin
                 $display("POTENTIAL DEADLOCK DETECTED at time %0t", $time);
                 $display("Last activity: %0t", lastActivityTime);
@@ -563,7 +578,7 @@ module enhanced_core_tb();
                 $display("Valid Instruction: %b", validInstruction);
                 $display("Instruction Complete: %b", instructionComplete);
                 
-                // Try to recover by moving to final phase
+                // Try to recover by moving to final phase.
                 $display("Attempting recovery.");
                 testPhase = PHASEFINALANALYSIS;
                 repeat (50) @(posedge clk);
