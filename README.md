@@ -1,4 +1,4 @@
-# RVZEN | A RISC-V Processor with Power Management and Branch Prediction
+# RVSH | A RISC-V Processor with Power Management and Branch Prediction
 
 *A performance-optimized RISC-V processor with intelligent power management and adaptive branch prediction.*
 
@@ -21,7 +21,9 @@ This is a custom RISC-V processor implementation targeting the Z7-20 FPGA, featu
 - ✅ Power Optimizer Test-bench: Comprehensive, covers all power management, DVFS, gating, and emergency scenarios.
 - ✅ Workload Classifier: Fully implemented, AI-inspired workload monitoring.
 - ✅ Workload Classifier Test-bench: Covers all workload types, adaptation, and learning scenarios.
-- 📋 Complete Core: Planned.
+- 🚧 Complete Core: Almost done.
+- 📋 FPGA Implementation: Planned.
+- 📋 Final Testing with Video: Planned.
 
 ## 🏗️ Architecture
 [Will add more detail and a block diagram soon.]
