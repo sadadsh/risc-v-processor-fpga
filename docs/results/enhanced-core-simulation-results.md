@@ -15,7 +15,7 @@ Time: 995000 | Phase 1: 15/50 instructions completed.
   PASS: Workload classifier responding (format: 1, conf: 13, valid: 1).
 INFO: [USF-XSim-96] XSim completed. Design snapshot 'enhanced_core_tb_behav' loaded.
 INFO: [USF-XSim-97] XSim simulation ran for 1000ns
-launch_simulation: Time (s): cpu = 00:00:01 ; elapsed = 00:00:06 . Memory (MB): peak = 1620.938 ; gain = 0.000
+launch_simulation: Time (s): cpu = 00:00:01 ; elapsed = 00:00:07 . Memory (MB): peak = 1536.375 ; gain = 0.000
 run all
 Time: 1225000 | Executed[20]:    Phase Instruction (PC=0x00001050)
 Time: 1745000 | Phase 1: 30/50 instructions completed.
@@ -29,11 +29,11 @@ Time: 2495000 | Phase 1: 45/50 instructions completed.
   PASS: Power system active (131 units).
   PASS: Insufficient branches for accuracy test (0 branches).
   PASS: Workload classifier responding (format: 1, conf: 10, valid: 1).
-=== IMPROVED PHASE 1 VALIDATION ***
+*** IMPROVED PHASE 1 VALIDATION ***
   PASS: All instructions completed (50/50).
   PASS: No deadlock or hanging detected.
   PASS: Good IPC (0.18).
-==============================
+==============================================================
 Time: 2795000 | *** PHASE 1: COMPLETED 50 INSTRUCTIONS ***
 Time: 2795000 | *** PHASE 2: Starting ***
 Testing immediate instructions with optimized execution.
@@ -57,11 +57,11 @@ Time: 5765000 | Phase 2: 45/50 instructions completed.
   PASS: Branch predictor learning well (88% accuracy, 25 branches).
   PASS: Workload classifier responding (format: 1, conf: 7, valid: 1).
 Time: 6015000 | Executed[100]:    Phase Instruction (PC=0x000011d8)
-=== IMPROVED PHASE 2 VALIDATION ***
+*** IMPROVED PHASE 2 VALIDATION ***
   PASS: All instructions completed (56/50).
   PASS: No deadlock or hanging detected.
   PASS: Good IPC (0.17).
-==============================
+==============================================================
 Time: 6105000 | *** PHASE 2: COMPLETED 50 INSTRUCTIONS ***
 Time: 6105000 | *** PHASE 3: Starting ***
 Training branch predictor with careful timing and validation.
@@ -82,12 +82,12 @@ Time: 8555000 | Phase 3: 45/50 instructions completed.
   PASS: Power system active (153 units).
   PASS: Branch predictor learning well (93% accuracy, 30 branches).
   PASS: Workload classifier responding (format: 4, conf: 13, valid: 1).
-=== IMPROVED PHASE 3 VALIDATION ***
+*** IMPROVED PHASE 3 VALIDATION ***
   PASS: All instructions completed (50/50).
   PASS: No deadlock or hanging detected.
   PASS: Good IPC (0.18).
   PASS: Excellent branch training (93% accuracy).
-==============================
+==============================================================
 Time: 8845000 | *** PHASE 3: COMPLETED 50 INSTRUCTIONS ***
 Time: 8845000 | *** PHASE 4: Starting ***
 Compute workload testing with mixed instruction types.
@@ -110,11 +110,11 @@ Time: 11175000 | Phase 4: 45/50 instructions completed.
   PASS: Branch predictor learning well (94% accuracy, 8 branches).
   PASS: Workload classifier responding (format: 1, conf: 9, valid: 1).
 Time: 11415000 | Executed[200]:    Phase Instruction (PC=0x000013c0)
-=== IMPROVED PHASE 4 VALIDATION ***
+*** IMPROVED PHASE 4 VALIDATION ***
   PASS: All instructions completed (50/50).
   PASS: No deadlock or hanging detected.
   PASS: Good IPC (0.18).
-==============================
+==============================================================
 Time: 11485000 | *** PHASE 4: COMPLETED 50 INSTRUCTIONS ***
 Time: 11485000 | *** PHASE 5: Starting ***
 Control workload testing for prediction training.
@@ -135,12 +135,12 @@ Time: 13935000 | Phase 5: 45/50 instructions completed.
   PASS: Power system active (115 units).
   PASS: Branch predictor learning well (95% accuracy, 30 branches).
   PASS: Workload classifier responding (format: 4, conf: 6, valid: 1).
-=== IMPROVED PHASE 5 VALIDATION ***
+*** IMPROVED PHASE 5 VALIDATION ***
   PASS: All instructions completed (50/50).
   PASS: No deadlock or hanging detected.
   PASS: Good IPC (0.18).
   PASS: Excellent branch training (94% accuracy).
-==============================
+==============================================================
 Time: 14225000 | *** PHASE 5: COMPLETED 50 INSTRUCTIONS ***
 Time: 14225000 | *** PHASE 6: Starting ***
 Mixed workload testing with all instruction types.
@@ -162,11 +162,11 @@ Time: 16515000 | Phase 6: 45/50 instructions completed.
   PASS: Insufficient branches for accuracy test (0 branches).
   PASS: Workload classifier responding (format: 1, conf: 15, valid: 1).
 Time: 16745000 | Executed[300]:    Phase Instruction (PC=0x000015a8)
-=== IMPROVED PHASE 6 VALIDATION ***
+*** IMPROVED PHASE 6 VALIDATION ***
   PASS: All instructions completed (50/50).
   PASS: No deadlock or hanging detected.
   PASS: Good IPC (0.18).
-==============================
+==============================================================
 Time: 16815000 | *** PHASE 6: COMPLETED 50 INSTRUCTIONS ***
 Core functionality validated. Testing advanced features...
 Time: 16815000 | *** PHASE 7: Starting ***
@@ -177,12 +177,12 @@ Time: 17605000 | Phase 7: 15/25 instructions completed.
   PASS: Insufficient branches for accuracy test (0 branches).
   PASS: Workload classifier responding (format: 1, conf: 10, valid: 1).
 Time: 17835000 | Executed[320]:    Phase Instruction (PC=0x000015fc)
-=== IMPROVED PHASE 7 VALIDATION ***
+*** IMPROVED PHASE 7 VALIDATION ***
   PASS: All instructions completed (25/25).
   PASS: No deadlock or hanging detected.
   PASS: Good IPC (0.18).
   PASS: Excellent power reduction (16 units).
-==============================
+==============================================================
 Time: 18155000 | *** PHASE 7: COMPLETED 25 INSTRUCTIONS ***
 Time: 18155000 | *** PHASE 8: Starting ***
 Default instruction sequence testing.
@@ -192,12 +192,12 @@ Time: 18945000 | Phase 8: 15/25 instructions completed.
   PASS: Power system active (48 units).
   PASS: Insufficient branches for accuracy test (0 branches).
   PASS: Workload classifier responding (format: 1, conf: 12, valid: 1).
-=== IMPROVED PHASE 8 VALIDATION ***
+*** IMPROVED PHASE 8 VALIDATION ***
   PASS: All instructions completed (25/25).
   PASS: No deadlock or hanging detected.
   PASS: Good IPC (0.18).
   PASS: Thermal protection active (throttle: 1, state: 6).
-==============================
+==============================================================
 Time: 19495000 | *** PHASE 8: COMPLETED 25 INSTRUCTIONS ***
 
 ================================================================

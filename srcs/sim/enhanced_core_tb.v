@@ -481,7 +481,7 @@ module enhanced_core_tb();
         begin
             actualInstructions = totalInstructions - startInstructions;
             branchesExecuted = totalBranches - startBranches;
-            $display("=== IMPROVED PHASE %0d VALIDATION ***", phase);
+            $display("*** IMPROVED PHASE %0d VALIDATION ***", phase);
             if (actualInstructions >= expectedInstructions) begin
                 passCount = passCount + 1;
                 $display("  PASS: All instructions completed (%0d/%0d).", actualInstructions, expectedInstructions);
@@ -544,7 +544,7 @@ module enhanced_core_tb();
                     end
                 end
             endcase
-            $display("==============================");
+            $display("==============================================================");
         end
     endtask
 
