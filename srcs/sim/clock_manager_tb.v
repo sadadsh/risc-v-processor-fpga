@@ -95,7 +95,7 @@ module clock_manager_tb();
     // MAIN TEST SEQUENCE
     initial begin
         $display("================================================================");
-        $display("    CLOCK MANAGER TESTBENCH STARTING - FIXED VERSION           ");
+        $display("              CLOCK MANAGER TESTBENCH STARTING                  ");
         $display("================================================================");
         
         // Initialize all signals.
