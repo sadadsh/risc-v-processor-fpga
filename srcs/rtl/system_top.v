@@ -1,7 +1,6 @@
 // ================================================================
-// MINIMAL SYSTEM TOP FIX - INSTRUCTION INTERFACE ONLY
-// Only fixes the instruction generation and delivery to enhanced_core
-// Does NOT modify the enhanced_core module at all
+// SYSTEM TOP FIX - CORRECTED RESET POLARITY AND INSTRUCTION HANDSHAKE
+// Fixed reset polarity issue and improved instruction generation timing
 // ================================================================
 
 `timescale 1ns / 1ps
@@ -40,23 +39,26 @@ module system_top (
     
     // UART interface for debugging (optional).
     output wire uart_txd_in,      // UART transmit.
-    input wire uart_rxd_out       // UART receive.
+    input wire uart_rxd_out,      // UART receive.
+    
+    // Debug output for processor reset signal.
+    output wire debug_processor_reset  // Debug output for processor reset signal.
 );
 
     // ================================================================
     // INTERNAL SIGNALS AND PARAMETERS
     // ================================================================
     
-    // System clocks and resets - OPTIMIZED.
+    // System clocks and resets.
     wire clkCore;                 // Variable frequency processor clock.
     wire clkMemory;               // Memory interface clock.
     wire clkPeripheral;           // Peripheral clock.
     wire clkDebug;                // Debug clock.
     wire systemResetRaw;          // Raw reset from button.
     reg systemReset;              // Synchronized system reset (ACTIVE LOW).
-    wire processorReset;          // Processor domain reset (ACTIVE HIGH).
+    wire processorReset;          // Processor domain reset (ACTIVE LOW).
     
-    // Clock management signals - SIMPLIFIED for better simulation.
+    // Clock management signals.
     wire clockLocked;             // Clock stability indicator.
     wire clockStable;             // Clock stability indicator.
     reg [2:0] frequencyLevel;     // Current frequency level.
@@ -89,7 +91,7 @@ module system_top (
     wire [2:0] currentPowerState; // Current power state.
     wire [2:0] currentWorkloadFormat; // Workload classification.
     wire instructionComplete;    // Instruction completion flag.
-    wire requestNextInstruction; // Instruction request.
+    wire requestNextInstruction; // Instruction request from enhanced core.
     
     // Demo program control.
     reg [31:0] demoModeCounter;   // Demo mode timer.
@@ -97,31 +99,38 @@ module system_top (
     reg demoActive;               // Demo mode active.
     
     // ================================================================
-    // FIXED INSTRUCTION GENERATION - KEY FIX
+    // CORRECTED INSTRUCTION GENERATION
     // ================================================================
     
     // Instruction generation for demo.
     reg [31:0] currentInstruction; // Current instruction.
     reg validInstruction;         // Instruction validity flag.
     reg [31:0] instructionCounter; // Demo instruction counter.
+    reg [7:0] postResetDelay;     // Delay after reset before starting instructions.
     
     // Status display control.
     wire [31:0] displayValue;     // Value to display on 7-segment.
     wire [3:0] displayMode;       // Display mode selector.
 
-    // Reset synchronization registers - OPTIMIZED.
+    // Reset synchronization registers.
     reg [2:0] resetSyncReg;       // Reset synchronizer chain.
     
-    // Clock management stub for simulation - SIMPLIFIED.
+    // Clock management stub for simulation.
     reg clockManagerLocked;       // Internal lock signal.
     reg [7:0] lockCounter;        // Lock time counter.
+    
+    // Initialize clock management signals.
+    initial begin
+        clockManagerLocked = 1'b0;
+        lockCounter = 8'd0;
+    end
 
     // ================================================================
-    // INPUT DEBOUNCING - OPTIMIZED
+    // INPUT DEBOUNCING
     // ================================================================
     
     // Button debouncer instances for clean input signals.
-    debouncer #(.DEBOUNCE_DELAY(20'd10000)) btnCDeb ( // Reduced for simulation.
+    debouncer #(.DEBOUNCE_DELAY(20'd10000)) btnCDeb (
         .clk(clk),
         .buttonIn(btnC),
         .buttonOut(btnCDebounced)
@@ -152,13 +161,13 @@ module system_top (
     );
 
     // ================================================================
-    // RESET SYNCHRONIZATION - OPTIMIZED
+    // RESET SYNCHRONIZATION
     // ================================================================
     
     // Raw reset assignment.
     assign systemResetRaw = btnCDebounced;
     
-    // Simplified reset synchronization for better simulation performance.
+    // Reset synchronization for better simulation performance.
     always @(posedge clk or posedge systemResetRaw) begin
         if (systemResetRaw) begin
             resetSyncReg <= 3'b000;
@@ -169,30 +178,29 @@ module system_top (
         end
     end
     
-    // Processor reset depends on system reset and clock lock.
-    assign processorReset = systemReset & clockLocked;
+    // Processor reset depends on system reset and clock lock - ACTIVE LOW for enhanced_core.
+    // Remove circular dependency by making processor reset independent of clock lock initially.
+    assign processorReset = systemReset;
+    
+    // Debug output for processor reset signal.
+    assign debug_processor_reset = processorReset;
 
     // ================================================================
     // SIMPLIFIED CLOCK MANAGEMENT FOR SIMULATION
     // ================================================================
     
     // For simulation, use simplified clock management to avoid complexity.
-    // In real FPGA, this would be replaced with proper clock_manager.
-    always @(posedge clk or negedge systemReset) begin
-        if (!systemReset) begin
+    // Remove dependency on systemReset to avoid circular dependency.
+    always @(posedge clk) begin
+        if (lockCounter < 8'd50) begin
+            lockCounter <= lockCounter + 8'd1;
             clockManagerLocked <= 1'b0;
-            lockCounter <= 8'd0;
         end else begin
-            if (lockCounter < 8'd50) begin // Reduced lock time for simulation.
-                lockCounter <= lockCounter + 8'd1;
-                clockManagerLocked <= 1'b0;
-            end else begin
-                clockManagerLocked <= 1'b1;
-            end
+            clockManagerLocked <= 1'b1;
         end
     end
     
-    // Clock assignments - simplified for simulation.
+    // Clock assignments.
     assign clkCore = clk;         // Use input clock directly for simulation.
     assign clkMemory = clk;       // Use input clock directly for simulation.
     assign clkPeripheral = clk;   // Use input clock directly for simulation.
@@ -201,7 +209,7 @@ module system_top (
     assign clockStable = clockManagerLocked;
 
     // ================================================================
-    // SYSTEM CONTROL AND DEMO LOGIC - OPTIMIZED
+    // SYSTEM CONTROL AND DEMO LOGIC
     // ================================================================
     
     // Control signal assignments from switches.
@@ -211,7 +219,7 @@ module system_top (
     assign batteryLevel = 8'hC0;          // Simulated high battery level.
     assign performanceMode = sw[7];       // Switch 7 controls performance mode.
     
-    // Frequency level control - optimized logic.
+    // Frequency level control.
     always @(posedge clkPeripheral or negedge processorReset) begin
         if (!processorReset) begin
             frequencyLevel <= 3'b010; // Default to safe level.
@@ -227,31 +235,28 @@ module system_top (
         end
     end
     
-    // Demo mode control logic - OPTIMIZED for simulation.
+    // Demo mode control logic.
     always @(posedge clkPeripheral or negedge processorReset) begin
         if (!processorReset) begin
-            // Reset demo control.
             demoActive <= 1'b0;
             demoPhase <= 3'd0;
             demoModeCounter <= 32'd0;
-            instructionCounter <= 32'd0;
         end else begin
             // Demo mode activation.
             if (btnUDebounced && !demoActive) begin
                 demoActive <= 1'b1;
                 demoPhase <= 3'd1;
                 demoModeCounter <= 32'd0;
-                instructionCounter <= 32'd0;
             end else if (btnDDebounced) begin
                 demoActive <= 1'b0;
                 demoPhase <= 3'd0;
             end
             
-            // Demo phase progression - faster for simulation.
+            // Demo phase progression.
             if (demoActive) begin
                 demoModeCounter <= demoModeCounter + 32'd1;
                 
-                // Change demo phase every 500k cycles instead of 50M for simulation.
+                // Change demo phase every 500k cycles for simulation.
                 if (demoModeCounter >= 32'd500000) begin
                     demoModeCounter <= 32'd0;
                     demoPhase <= (demoPhase == 3'd7) ? 3'd1 : demoPhase + 3'd1;
@@ -261,85 +266,169 @@ module system_top (
     end
 
     // ================================================================
-    // FIXED INSTRUCTION GENERATION - CRITICAL FIX FOR 100% SUCCESS
+    // CORRECTED INSTRUCTION GENERATION WITH PROPER TIMING
     // ================================================================
     
-    // Generate simple RISC-V instructions for demonstration.
+    // Generate simple RISC-V instructions with proper handshake protocol.
     always @(posedge clkCore or negedge processorReset) begin
         if (!processorReset) begin
             currentInstruction <= 32'h00000013; // NOP instruction (ADDI x0, x0, 0).
             validInstruction <= 1'b0;
             instructionCounter <= 32'd0;
+            postResetDelay <= 8'd0;
         end else begin
-            // CRITICAL FIX: Always provide valid instructions once processor is active
-            validInstruction <= 1'b1;  // Key fix - always valid after reset
-            instructionCounter <= instructionCounter + 1;
-            
-            // Generate different instruction patterns based on demo phase.
-            case (demoPhase)
-                3'd1: begin
-                    // Phase 1: Arithmetic operations.
-                    case (instructionCounter[3:0])
-                        4'h0: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
-                        4'h1: currentInstruction <= 32'h002080B3; // ADD  x1, x1, x2
-                        4'h2: currentInstruction <= 32'h40208133; // SUB  x2, x1, x2
-                        4'h3: currentInstruction <= 32'h0020F1B3; // AND  x3, x1, x2
-                        4'h4: currentInstruction <= 32'h0020E233; // OR   x4, x1, x2
-                        4'h5: currentInstruction <= 32'h0020C2B3; // XOR  x5, x1, x2
-                        4'h6: currentInstruction <= 32'h00209333; // SLL  x6, x1, x2
-                        4'h7: currentInstruction <= 32'h0020D3B3; // SRL  x7, x1, x2
-                        4'h8: currentInstruction <= 32'h4020D433; // SRA  x8, x1, x2
-                        4'h9: currentInstruction <= 32'h0020A4B3; // SLT  x9, x1, x2
-                        4'hA: currentInstruction <= 32'h0020B533; // SLTU x10, x1, x2
-                        default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1 (default)
+            // Wait for processor to fully initialize after reset.
+            if (postResetDelay < 8'd20) begin
+                postResetDelay <= postResetDelay + 1;
+                validInstruction <= 1'b0;
+                currentInstruction <= 32'h00000013; // Keep providing NOP during startup.
+            end else begin
+                // Provide instructions based on request signal from enhanced_core.
+                if (requestNextInstruction) begin
+                    // Core is requesting next instruction - provide new one.
+                    instructionCounter <= instructionCounter + 1;
+                    validInstruction <= 1'b1;
+                    
+                    // Generate different instruction patterns based on demo phase.
+                    case (demoPhase)
+                        3'd1: begin
+                            // Phase 1: Arithmetic operations.
+                            case (instructionCounter[3:0])
+                                4'h0: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                                4'h1: currentInstruction <= 32'h002080B3; // ADD  x1, x1, x2
+                                4'h2: currentInstruction <= 32'h40208133; // SUB  x2, x1, x2
+                                4'h3: currentInstruction <= 32'h0020F1B3; // AND  x3, x1, x2
+                                4'h4: currentInstruction <= 32'h0020E233; // OR   x4, x1, x2
+                                4'h5: currentInstruction <= 32'h0020C2B3; // XOR  x5, x1, x2
+                                4'h6: currentInstruction <= 32'h00209333; // SLL  x6, x1, x2
+                                4'h7: currentInstruction <= 32'h0020D3B3; // SRL  x7, x1, x2
+                                4'h8: currentInstruction <= 32'h4020D433; // SRA  x8, x1, x2
+                                4'h9: currentInstruction <= 32'h0020A4B3; // SLT  x9, x1, x2
+                                4'hA: currentInstruction <= 32'h0020B533; // SLTU x10, x1, x2
+                                default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                            endcase
+                        end
+                        
+                        3'd2: begin
+                            // Phase 2: Immediate operations.
+                            case (instructionCounter[3:0])
+                                4'h0: currentInstruction <= 32'h00508093; // ADDI x1, x1, 5
+                                4'h1: currentInstruction <= 32'h0070F113; // ANDI x2, x1, 7
+                                4'h2: currentInstruction <= 32'h00A0E193; // ORI  x3, x1, 10
+                                4'h3: currentInstruction <= 32'h00C0C213; // XORI x4, x1, 12
+                                4'h4: currentInstruction <= 32'h00309293; // SLLI x5, x1, 3
+                                4'h5: currentInstruction <= 32'h0040D313; // SRLI x6, x1, 4
+                                4'h6: currentInstruction <= 32'h4050D393; // SRAI x7, x1, 5
+                                4'h7: currentInstruction <= 32'h00A0A413; // SLTI x8, x1, 10
+                                default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                            endcase
+                        end
+                        
+                        3'd3: begin
+                            // Phase 3: Branch-heavy workload.
+                            case (instructionCounter[2:0])
+                                3'h0: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                                3'h1: currentInstruction <= 32'h00208113; // ADDI x2, x1, 2
+                                3'h2: currentInstruction <= 32'h00208063; // BEQ  x1, x2, +0
+                                3'h3: currentInstruction <= 32'h00209063; // BNE  x1, x2, +0
+                                3'h4: currentInstruction <= 32'h0020C063; // BLT  x1, x2, +0
+                                3'h5: currentInstruction <= 32'h0020D063; // BGE  x1, x2, +0
+                                default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                            endcase
+                        end
+                        
+                        default: begin
+                            // Default: Simple continuous instruction pattern.
+                            case (instructionCounter[2:0])
+                                3'h0: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                                3'h1: currentInstruction <= 32'h002080B3; // ADD  x1, x1, x2
+                                3'h2: currentInstruction <= 32'h40208133; // SUB  x2, x1, x2
+                                3'h3: currentInstruction <= 32'h0020F1B3; // AND  x3, x1, x2
+                                3'h4: currentInstruction <= 32'h00208063; // BEQ  x1, x2, +0
+                                default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                            endcase
+                        end
                     endcase
-                end
-                
-                3'd2: begin
-                    // Phase 2: Immediate operations.
-                    case (instructionCounter[3:0])
-                        4'h0: currentInstruction <= 32'h00508093; // ADDI x1, x1, 5
-                        4'h1: currentInstruction <= 32'h0070F113; // ANDI x2, x1, 7
-                        4'h2: currentInstruction <= 32'h00A0E193; // ORI  x3, x1, 10
-                        4'h3: currentInstruction <= 32'h00C0C213; // XORI x4, x1, 12
-                        4'h4: currentInstruction <= 32'h00309293; // SLLI x5, x1, 3
-                        4'h5: currentInstruction <= 32'h0040D313; // SRLI x6, x1, 4
-                        4'h6: currentInstruction <= 32'h4050D393; // SRAI x7, x1, 5
-                        4'h7: currentInstruction <= 32'h00A0A413; // SLTI x8, x1, 10
-                        default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1 (default)
+                end else if (instructionCounter == 32'd0) begin
+                    // Provide first instruction after startup delay.
+                    validInstruction <= 1'b1;
+                    currentInstruction <= 32'h00108093; // Start with ADDI x1, x1, 1.
+                    instructionCounter <= 32'd1;
+                end else if (instructionComplete) begin
+                    // Instruction completed - provide next instruction.
+                    instructionCounter <= instructionCounter + 1;
+                    validInstruction <= 1'b1;
+                    
+                    // Generate next instruction based on demo phase.
+                    case (demoPhase)
+                        3'd1: begin
+                            // Phase 1: Arithmetic operations.
+                            case (instructionCounter[3:0])
+                                4'h0: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                                4'h1: currentInstruction <= 32'h002080B3; // ADD  x1, x1, x2
+                                4'h2: currentInstruction <= 32'h40208133; // SUB  x2, x1, x2
+                                4'h3: currentInstruction <= 32'h0020F1B3; // AND  x3, x1, x2
+                                4'h4: currentInstruction <= 32'h0020E233; // OR   x4, x1, x2
+                                4'h5: currentInstruction <= 32'h0020C2B3; // XOR  x5, x1, x2
+                                4'h6: currentInstruction <= 32'h00209333; // SLL  x6, x1, x2
+                                4'h7: currentInstruction <= 32'h0020D3B3; // SRL  x7, x1, x2
+                                4'h8: currentInstruction <= 32'h4020D433; // SRA  x8, x1, x2
+                                4'h9: currentInstruction <= 32'h0020A4B3; // SLT  x9, x1, x2
+                                4'hA: currentInstruction <= 32'h0020B533; // SLTU x10, x1, x2
+                                default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                            endcase
+                        end
+                        
+                        3'd2: begin
+                            // Phase 2: Immediate operations.
+                            case (instructionCounter[3:0])
+                                4'h0: currentInstruction <= 32'h00508093; // ADDI x1, x1, 5
+                                4'h1: currentInstruction <= 32'h0070F113; // ANDI x2, x1, 7
+                                4'h2: currentInstruction <= 32'h00A0E193; // ORI  x3, x1, 10
+                                4'h3: currentInstruction <= 32'h00C0C213; // XORI x4, x1, 12
+                                4'h4: currentInstruction <= 32'h00309293; // SLLI x5, x1, 3
+                                4'h5: currentInstruction <= 32'h0040D313; // SRLI x6, x1, 4
+                                4'h6: currentInstruction <= 32'h4050D393; // SRAI x7, x1, 5
+                                4'h7: currentInstruction <= 32'h00A0A413; // SLTI x8, x1, 10
+                                default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                            endcase
+                        end
+                        
+                        3'd3: begin
+                            // Phase 3: Branch-heavy workload.
+                            case (instructionCounter[2:0])
+                                3'h0: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                                3'h1: currentInstruction <= 32'h00208113; // ADDI x2, x1, 2
+                                3'h2: currentInstruction <= 32'h00208063; // BEQ  x1, x2, +0
+                                3'h3: currentInstruction <= 32'h00209063; // BNE  x1, x2, +0
+                                3'h4: currentInstruction <= 32'h0020C063; // BLT  x1, x2, +0
+                                3'h5: currentInstruction <= 32'h0020D063; // BGE  x1, x2, +0
+                                default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                            endcase
+                        end
+                        
+                        default: begin
+                            // Default: Simple continuous instruction pattern.
+                            case (instructionCounter[2:0])
+                                3'h0: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                                3'h1: currentInstruction <= 32'h002080B3; // ADD  x1, x1, x2
+                                3'h2: currentInstruction <= 32'h40208133; // SUB  x2, x1, x2
+                                3'h3: currentInstruction <= 32'h0020F1B3; // AND  x3, x1, x2
+                                3'h4: currentInstruction <= 32'h00208063; // BEQ  x1, x2, +0
+                                default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
+                            endcase
+                        end
                     endcase
+                end else begin
+                    // Hold current instruction until instruction completes.
+                    validInstruction <= 1'b1;
                 end
-                
-                3'd3: begin
-                    // Phase 3: Branch-heavy workload.
-                    case (instructionCounter[2:0])
-                        3'h0: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
-                        3'h1: currentInstruction <= 32'h00208113; // ADDI x2, x1, 2
-                        3'h2: currentInstruction <= 32'h00208063; // BEQ  x1, x2, +0
-                        3'h3: currentInstruction <= 32'h00209063; // BNE  x1, x2, +0
-                        3'h4: currentInstruction <= 32'h0020C063; // BLT  x1, x2, +0
-                        3'h5: currentInstruction <= 32'h0020D063; // BGE  x1, x2, +0
-                        default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1 (default)
-                    endcase
-                end
-                
-                default: begin
-                    // Default: Simple continuous instruction pattern to keep processor busy.
-                    case (instructionCounter[2:0])
-                        3'h0: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1
-                        3'h1: currentInstruction <= 32'h002080B3; // ADD  x1, x1, x2
-                        3'h2: currentInstruction <= 32'h40208133; // SUB  x2, x1, x2
-                        3'h3: currentInstruction <= 32'h0020F1B3; // AND  x3, x1, x2
-                        3'h4: currentInstruction <= 32'h00208063; // BEQ  x1, x2, +0 (branch)
-                        default: currentInstruction <= 32'h00108093; // ADDI x1, x1, 1 (fallback)
-                    endcase
-                end
-            endcase
+            end
         end
     end
 
     // ================================================================
-    // ENHANCED RISC-V PROCESSOR CORE - UNCHANGED
+    // ENHANCED RISC-V PROCESSOR CORE
     // ================================================================
     
     enhanced_core processorCore (
@@ -469,11 +558,11 @@ module system_top (
 endmodule
 
 // ================================================================
-// BUTTON DEBOUNCER MODULE - UNCHANGED
+// BUTTON DEBOUNCER MODULE
 // ================================================================
 
 module debouncer #(
-    parameter DEBOUNCE_DELAY = 20'd10000 // Reduced for simulation.
+    parameter DEBOUNCE_DELAY = 20'd10000
 )(
     input wire clk,
     input wire buttonIn,
@@ -505,7 +594,7 @@ module debouncer #(
 endmodule
 
 // ================================================================
-// 7-SEGMENT DISPLAY CONTROLLER - UNCHANGED
+// 7-SEGMENT DISPLAY CONTROLLER
 // ================================================================
 
 module seven_segment_display (
@@ -517,7 +606,7 @@ module seven_segment_display (
     output reg dp
 );
 
-    parameter REFRESH_RATE = 16'd5000; // Faster refresh for simulation.
+    parameter REFRESH_RATE = 16'd5000;
     
     reg [15:0] refreshCounter;
     reg [1:0] digitSelect;
@@ -582,7 +671,7 @@ module seven_segment_display (
 endmodule
 
 // ================================================================
-// UART TRANSMITTER - UNCHANGED
+// UART TRANSMITTER
 // ================================================================
 
 module uart_transmitter (
@@ -596,7 +685,7 @@ module uart_transmitter (
     output reg uart_tx
 );
 
-    parameter BAUD_RATE = 16'd434; // Faster for simulation.
+    parameter BAUD_RATE = 16'd434;
     
     reg [15:0] baudCounter;
     reg [7:0] transmitData;
@@ -622,7 +711,6 @@ module uart_transmitter (
         end else if (transmitEnable) begin
             transmitTimer <= transmitTimer + 32'd1;
             
-            // Transmit status every 250k cycles for simulation.
             if (transmitTimer >= 32'd250000 && !transmitting) begin
                 transmitTimer <= 32'd0;
                 transmitting <= 1'b1;

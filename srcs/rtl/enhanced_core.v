@@ -145,6 +145,19 @@ module enhanced_core (
     // PIPELINE STATE MANAGEMENT
     reg [2:0] currentPipelineStage;
     reg pipelineActive;
+    
+    // Initialize processor state registers.
+    initial begin
+        programCounter = 32'h00001000;
+        instructionCounter = 32'h0;
+        cycleCounter = 32'h0;
+        branchCounter = 32'h0;
+        instructionCompleted = 1'b0;
+        requestInstruction = 1'b0;
+        branchWasTaken = 1'b0;
+        currentPipelineStage = STAGEIDLE;
+        pipelineActive = 1'b0;
+    end
 
     // BRANCH RESOLUTION
     reg branchResolved;
@@ -541,7 +554,8 @@ module instruction_decoder (
     localparam OPCODEJAL = 7'b1101111;  // JAL
     localparam OPCODEJALR = 7'b1100111; // JALR
 
-    // Field extraction.
+    // Field extraction - RISC-V instruction format.
+    // Fixed: Remove incorrect byte reversal - instructions are already in correct format.
     assign opcode = instruction[6:0];
     assign rd = instruction[11:7];
     assign fun3 = instruction[14:12];
