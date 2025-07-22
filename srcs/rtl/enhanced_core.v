@@ -183,6 +183,8 @@ module enhanced_core (
     wire [7:0] powerConsumptionTrend;    // Power consumption trend
     wire optimizationActive;             // Power optimization active status
     wire thermalThrottling;              // Thermal throttling status
+    wire powerGateCoreInternal;  // Internal core power gating signal
+    wire [3:0] optimizerAdaptationRate4bit;  // 4-bit adaptation rate from power optimizer
 
     // Power gating control signals.
     wire gateALU, gateRegister, gateBranchPredictor, gateCache;
@@ -536,17 +538,18 @@ module enhanced_core (
         .powerGateRegister(gateRegister),
         .powerGateBranchPredictor(gateBranchPredictor),
         .powerGateCache(gateCache),
+        .powerGateCore(powerGateCoreInternal),  // FIX: Connect missing powerGateCore
         .thermalThrottle(thermalThrottling),
         .currentTotalPower(totalPower),
         .powerEfficiency(efficiency),
+        .powerState(powerState),
         .temperatureEstimate(temperatureEstimateInternal),
         .energySaved(savedEnergy),
         .optimizationQuality(optimizationQuality),
         .predictedWorkloadFormat(predictedWorkloadFormat),
-        .adaptationRate(optimizerAdaptationRate),
+        .adaptationRate(optimizerAdaptationRate4bit),  // FIX: Use 4-bit signal
         .powerTrend(powerConsumptionTrend),
-        .powerOptimizationActive(optimizationActive),
-        .powerState(powerState)
+        .powerOptimizationActive(optimizationActive)
     );
 
     // ======================================================================
@@ -587,6 +590,7 @@ module enhanced_core (
     assign energySaved = savedEnergy;                         // Energy saved
     assign powerOptimizationActive = optimizationActive;      // Power optimization status
     assign thermalThrottle = thermalThrottling;               // Thermal throttling status
+    assign optimizerAdaptationRate = {4'b0000, optimizerAdaptationRate4bit};  // Extend to 8 bits
 
     // Component Power Gating Status
     assign powerGateALU = gateALU;                            // ALU power gating status

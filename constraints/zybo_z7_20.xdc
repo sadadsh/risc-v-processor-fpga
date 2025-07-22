@@ -1,7 +1,8 @@
 ##############################################################################
-## OFFICIAL DIGILENT ZYBO Z7-20 CONSTRAINTS - WITH UART DEBUG
+## Z7-20 FPGA CONSTRAINTS FOR RISC-V DEMO SYSTEM
 ## Engineer: Sadad Haidari
-## Source: Official Digilent digilent-xdc repository + UART addition
+## Based on: Official Digilent Z7-20 constraints
+## Purpose: Enhanced RISC-V processor demonstration
 ##############################################################################
 
 ##############################################################################
@@ -59,3 +60,10 @@ set_property -dict { PACKAGE_PIN Y16   IOSTANDARD LVCMOS33 } [get_ports { btn[3]
 # UART for Debug Output - using PMOD pin for external USB-to-serial
 set_property -dict { PACKAGE_PIN Y19   IOSTANDARD LVCMOS33 } [get_ports { uart_tx }]
 # Note: Connect external USB-to-serial converter to this pin
+
+##############################################################################
+## Configuration
+##############################################################################
+
+set_property CFGBVS VCCO [current_design]
+set_property CONFIG_VOLTAGE 3.3 [current_design]
