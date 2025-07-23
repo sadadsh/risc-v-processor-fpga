@@ -3,7 +3,6 @@
 // WORKLOAD CLASSIFIER TESTBENCH
 // Engineer: Sadad Haidari
 
-
 module workload_classifier_tb;
     reg clk;
     reg reset;

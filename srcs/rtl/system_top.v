@@ -1,10 +1,8 @@
+
 `timescale 1ns / 1ps
 
-// ENHANCED RISC-V SYSTEM WITH DEMO FEATURES
+// ENHANCED RISC-V WITH DEMO FEATURES
 // Engineer: Sadad Haidari
-// 
-// This ADDS demo functionality to the existing working system_top.v
-// WITHOUT breaking the existing enhanced_core integration
 
 module system_top (
     // Clock
@@ -21,11 +19,9 @@ module system_top (
     output wire uart_tx
 );
 
-    // ======================================================================
-    // SYSTEM CONTROL AND TIMING (Keep existing)
-    // ======================================================================
+    // SYSTEM CONTROL AND TIMING
+    // Master counter generates timing signals for processor and display domains.
     
-    // Master counter for all timing
     reg [26:0] counter;
     always @(posedge clk) begin
         counter <= counter + 1;
@@ -44,9 +40,8 @@ module system_top (
         slowBlink <= counter[24];       // ~3 Hz slow blink
     end
 
-    // ======================================================================
-    // BUTTON AND SWITCH INTERFACE (Keep existing + add demo controls)
-    // ======================================================================
+    // BUTTON AND SWITCH INTERFACE
+    // Handles button debouncing, edge detection, and switch input.
     
     // Clean button signals (handle active LOW)
     reg [3:0] btn_sync1, btn_sync2, btn_clean;
@@ -67,9 +62,8 @@ module system_top (
     // Switch interface (working perfectly)
     wire [3:0] sw_clean = sw;
 
-    // ======================================================================
-    // DEMO STATE MACHINE (NEW - Non-interfering)
-    // ======================================================================
+    // DEMO STATE MACHINE
+    // Controls demo phases and transitions for hardware demonstration.
     
     // Demo phases for demonstration
     localparam DEMO_IDLE     = 3'd0;   // Normal operation
@@ -131,10 +125,9 @@ module system_top (
         end
     end
 
-    // ======================================================================
-    // PROCESSOR CONTROL STATE MACHINE (Keep existing)
-    // ======================================================================
-    
+    // PROCESSOR CONTROL STATE MACHINE
+    // Manages processor operational states (idle, ready, running, paused, analysis).
+
     // Processor control states
     localparam STATE_IDLE = 3'd0;
     localparam STATE_READY = 3'd1;
@@ -187,10 +180,9 @@ module system_top (
         end
     end
 
-    // ======================================================================
-    // INSTRUCTION GENERATOR WITH DRAMATIC PHASE DIFFERENCES
-    // ======================================================================
-    
+    // INSTRUCTION GENERATOR
+    // Generates instruction patterns for each demo phase to exercise different features.
+
     reg [31:0] instruction;
     reg validInstruction;
     reg [15:0] instructionCounter;
@@ -325,9 +317,8 @@ module system_top (
         end
     end
 
-    // ======================================================================
-    // ENHANCED CORE INSTANTIATION (EXACT MATCH TO YOUR INTERFACE)
-    // ======================================================================
+    // ENHANCED CORE INSTANTIATION
+    // Instantiates the main processor core and connects all interfaces.
     
     // Reset generation
     reg [7:0] resetCounter;
@@ -345,7 +336,7 @@ module system_top (
         end
     end
     
-    // Enhanced core outputs (EXACT MATCH TO YOUR INTERFACE)
+    // Enhanced core outputs
     wire requestNextInstruction;
     wire instructionComplete;
     wire branchTaken;
@@ -377,7 +368,7 @@ module system_top (
     wire [2:0] pipelineStage;
     wire [7:0] adaptationRate, powerTrend;
     
-    // Enhanced core instantiation (EXACT PORT MAPPING)
+    // Enhanced core instantiation
     enhanced_core processorCore (
         .clk(processorClock),
         .reset(systemReset),
@@ -447,9 +438,8 @@ module system_top (
         .powerTrend(powerTrend)
     );
 
-    // ======================================================================
-    // ENHANCED LED DISPLAY (Use registered signals only)
-    // ======================================================================
+    // LED DISPLAY
+    // Drives LEDs and RGB indicators to visualize processor and demo status.
     
     reg [3:0] ledOutput;
     reg rgbR1, rgbG1, rgbB1;  // RGB LED 5
@@ -476,9 +466,8 @@ module system_top (
         displayToggle <= ~displayToggle;  // Create registered toggle signal
     end
 
-    // ======================================================================
-    // REAL-TIME METRIC TRACKING FOR DRAMATIC CHANGES
-    // ======================================================================
+    // REAL-TIME METRIC TRACKING
+    // Tracks and simulates metrics for demo visualization (branch accuracy, power, workload, progress).
     
     reg [7:0] localBranchAccuracy;          // Local branch accuracy counter
     reg [2:0] localPowerLevel;              // Local power level
@@ -557,7 +546,6 @@ module system_top (
         end
     end
 
-    // SUPER CLEAR AND INTUITIVE LED DISPLAY USING BOTH RGB LEDS
     always @(posedge displayClock) begin
         if (demoMode) begin
             // CLEAR PHASE INDICATION: Standard LEDs show phase number (binary)
@@ -734,9 +722,8 @@ module system_top (
     assign led6_g = rgbG2;
     assign led6_b = rgbB2;
 
-    // ======================================================================
-    // UART DEBUG OUTPUT (Keep existing)
-    // ======================================================================
+    // UART DEBUG OUTPUT
+    // Sends debug information over UART for external monitoring, requires adapter.
     
     // Simple UART transmitter for debug
     reg [7:0] uartData;
@@ -756,9 +743,8 @@ module system_top (
     
     assign uart_tx = uartSend;
 
-    // ======================================================================
-    // DEBUG MONITORING (Optional - can be removed for final implementation)
-    // ======================================================================
+    // DEBUG MONITORING
+    // Tracks instruction flow and program counter for debugging purposes.
     
     // Debug counter to track instruction flow
     reg [31:0] debugInstructionCount;

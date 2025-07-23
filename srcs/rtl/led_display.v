@@ -1,19 +1,13 @@
-// ================================================================
-// LED DISPLAY CONTROLLER
-// Manages LED patterns and RGB LEDs for system status indication
-// ================================================================
-// This module controls the 16 standard LEDs and 2 RGB LEDs on the
-// Z7-20 board to provide visual feedback of system status.
-// Optimized for simulation performance and clear status indication.
-// ================================================================
+// LED Display Controller
+// Engineer: Sadad Haidari
+// Controls 16 standard LEDs and 2 RGB LEDs for system and demo status
 
 `timescale 1ns / 1ps
 
 module led_display (
     input wire clk,               // Display refresh clock.
-    input wire reset,             // Reset signal (ACTIVE HIGH).
-    
-    // System status inputs.
+    input wire reset,             // Reset signal (active high).
+    // System status inputs
     input wire clockLocked,       // Clock manager lock status.
     input wire processorActive,   // Processor running status.
     input wire [3:0] frequencyLevel,   // Current frequency level.
@@ -24,8 +18,7 @@ module led_display (
     input wire demoActive,        // Demo mode active.
     input wire [2:0] demoPhase,   // Current demo phase.
     input wire [14:0] switchInputs,    // Switch inputs for control.
-    
-    // LED outputs.
+    // LED outputs
     output reg [15:0] led,        // 16 standard LEDs.
     output reg led16_r,           // RGB LED 16 red.
     output reg led16_g,           // RGB LED 16 green.
@@ -35,11 +28,7 @@ module led_display (
     output reg led17_b            // RGB LED 17 blue.
 );
 
-    // ================================================================
-    // PARAMETERS AND CONSTANTS
-    // ================================================================
-    
-    // Display modes based on switch settings.
+    // Display mode selection
     localparam MODE_SYSTEM_STATUS = 3'd0;
     localparam MODE_FREQUENCY_POWER = 3'd1;
     localparam MODE_BRANCH_ACCURACY = 3'd2;
@@ -48,33 +37,22 @@ module led_display (
     localparam MODE_ALL_ON = 3'd5;
     localparam MODE_PATTERN_TEST = 3'd6;
     localparam MODE_HEARTBEAT = 3'd7;
-    
-    // Animation timing.
-    parameter ANIMATION_SPEED = 24'd5000000; // 50ms at 100MHz.
-    parameter HEARTBEAT_SPEED = 24'd25000000; // 250ms at 100MHz.
-    
-    // ================================================================
-    // INTERNAL SIGNALS AND REGISTERS
-    // ================================================================
-    
-    // Display control registers.
-    reg [2:0] displayMode;        // Current display mode.
-    reg [23:0] animationCounter;  // Animation timing counter.
-    reg [3:0] animationPhase;     // Current animation phase.
-    reg [15:0] ledPattern;        // Current LED pattern.
-    
-    // RGB LED control.
-    reg [7:0] rgbCounter;         // RGB animation counter.
-    reg [2:0] rgbPhase;           // RGB animation phase.
-    
-    // Status processing.
-    reg [7:0] processedBranchAccuracy; // Processed branch accuracy.
-    reg [3:0] systemHealth;       // Overall system health indicator.
-    
-    // ================================================================
-    // INITIALIZATION
-    // ================================================================
-    
+
+    // Animation timing parameters
+    parameter ANIMATION_SPEED = 24'd5000000; // 50ms at 100MHz
+    parameter HEARTBEAT_SPEED = 24'd25000000; // 250ms at 100MHz
+
+    // Internal registers
+    reg [2:0] displayMode;        // Current display mode
+    reg [23:0] animationCounter;  // Animation timing counter
+    reg [3:0] animationPhase;     // Current animation phase
+    reg [15:0] ledPattern;        // Current LED pattern
+    reg [7:0] rgbCounter;         // RGB animation counter
+    reg [2:0] rgbPhase;           // RGB animation phase
+    reg [7:0] processedBranchAccuracy; // Processed branch accuracy
+    reg [3:0] systemHealth;       // Overall system health indicator
+
+    // Initialize outputs and registers
     initial begin
         led = 16'h0000;
         led16_r = 1'b0;
@@ -92,21 +70,13 @@ module led_display (
         processedBranchAccuracy = 8'd0;
         systemHealth = 4'd0;
     end
-    
-    // ================================================================
-    // DISPLAY MODE SELECTION
-    // ================================================================
-    
-    // Select display mode based on switch inputs.
+
+    // Select display mode from switches
     always @(*) begin
         displayMode = switchInputs[2:0]; // Use lower 3 switches for mode.
     end
-    
-    // ================================================================
-    // ANIMATION AND TIMING CONTROL
-    // ================================================================
-    
-    // Animation timing and phase control.
+
+    // Animation and timing control
     always @(posedge clk) begin
         if (reset) begin
             animationCounter <= 24'd0;
@@ -128,17 +98,13 @@ module led_display (
             end
         end
     end
-    
-    // ================================================================
-    // STATUS PROCESSING
-    // ================================================================
-    
-    // Process branch accuracy for display.
+
+    // Process branch accuracy for display
     always @(*) begin
         processedBranchAccuracy = branchAccuracy[7:0]; // Take lower 8 bits.
     end
-    
-    // Calculate overall system health.
+
+    // Calculate overall system health
     always @(*) begin
         systemHealth = 4'd0;
         if (clockLocked) systemHealth = systemHealth + 4'd1;
@@ -146,12 +112,8 @@ module led_display (
         if (!thermalThrottle) systemHealth = systemHealth + 4'd1;
         if (powerState <= 4'd5) systemHealth = systemHealth + 4'd1; // Reasonable power.
     end
-    
-    // ================================================================
-    // LED PATTERN GENERATION
-    // ================================================================
-    
-    // Generate LED patterns based on display mode.
+
+    // LED pattern generation based on display mode
     always @(*) begin
         case (displayMode)
             MODE_SYSTEM_STATUS: begin
@@ -176,7 +138,6 @@ module led_display (
                 // Display branch prediction accuracy.
                 ledPattern = {8'd0, processedBranchAccuracy};
             end
-            
             MODE_DEMO_STATUS: begin
                 // Display demo status and phase.
                 ledPattern[15] = demoActive;
@@ -184,7 +145,6 @@ module led_display (
                 ledPattern[11:8] = workloadFormat;
                 ledPattern[7:0] = processedBranchAccuracy;
             end
-            
             MODE_WORKLOAD_CLASS: begin
                 // Display workload classification.
                 ledPattern[15:12] = workloadFormat;
@@ -192,12 +152,10 @@ module led_display (
                 ledPattern[7:4] = powerState;
                 ledPattern[3:0] = systemHealth;
             end
-            
             MODE_ALL_ON: begin
                 // All LEDs on for testing.
                 ledPattern = 16'hFFFF;
             end
-            
             MODE_PATTERN_TEST: begin
                 // Animated test pattern.
                 case (animationPhase[1:0])
@@ -207,7 +165,6 @@ module led_display (
                     2'd3: ledPattern = 16'h00FF; // Lower half.
                 endcase
             end
-            
             MODE_HEARTBEAT: begin
                 // Heartbeat pattern showing system alive.
                 if (animationCounter < HEARTBEAT_SPEED / 4) begin
@@ -218,7 +175,6 @@ module led_display (
                     ledPattern = 16'h0000; // Off.
                 end
             end
-            
             default: begin
                 // Default to system status.
                 ledPattern[15] = clockLocked;
@@ -227,12 +183,8 @@ module led_display (
             end
         endcase
     end
-    
-    // ================================================================
-    // RGB LED CONTROL
-    // ================================================================
-    
-    // Control RGB LED 16 based on system status.
+
+    // RGB LED 16 shows system health
     always @(*) begin
         case (systemHealth)
             4'd0, 4'd1: begin
@@ -261,8 +213,8 @@ module led_display (
             end
         endcase
     end
-    
-    // Control RGB LED 17 based on demo and workload status.
+
+    // RGB LED 17 shows demo or workload status
     always @(*) begin
         if (demoActive) begin
             // Demo mode - cycling colors.
@@ -318,12 +270,8 @@ module led_display (
             endcase
         end
     end
-    
-    // ================================================================
-    // OUTPUT ASSIGNMENT
-    // ================================================================
-    
-    // Assign LED pattern to output.
+
+    // Assign LED pattern to output
     always @(posedge clk) begin
         if (reset) begin
             led <= 16'h0000;

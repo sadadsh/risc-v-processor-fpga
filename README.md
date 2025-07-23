@@ -1,165 +1,130 @@
-# RV-ZSH | A RISC-V Processor with Power Management and Branch Prediction
+# Enhanced RISC-V Processor with Adaptive Optimizations
 
-*A performance-optimized RISC-V processor with intelligent power management and adaptive branch prediction.*
-> **Current Simulation Status:**
-> The current `system_top.v` is a minimal, simulation-optimized version with a fixed instruction generator for robust testbench verification. The `enhanced_core` module remains unchanged. This setup is intended for simulation and verification only, not for full FPGA deployment.
+A 32-bit RISC-V processor implementation featuring adaptive branch prediction and intelligent power management, designed for the Xilinx ZYNQ-7000 FPGA platform.
 
-## 🔩 Project Overview
-This is a custom RISC-V processor implementation targeting the Z7-20 FPGA, featuring innovative microarchitectural enhancements for better performance.
+## Overview
 
-## 📊 Current Status
-[Updating with each commit.]
-- ✅ Register File: Complete with performance monitoring.
-- ✅ Register Test-bench File: Paired with register file for verification.
-- ✅ Arithmetic Logic Unit: Complete.
-- ✅ Arithmetic Logic Unit Test-bench File: Complete.
-- ✅ Processor Core: Functional processor executing real RISC-V instructions.
-- ✅ Core Test-bench File: Complete.
-- ✅ Branch Predictor: Implemented, fully tested, and passing all testbenches.
-- ✅ Branch Predictor Test-bench: Comprehensive, realistic scenarios covered with >75% prediction accuracy.
-- ✅ Instruction Decoder: Enhanced, fully verified, 100% test pass rate.
-- ✅ Instruction Decoder Test-bench: All instruction types and edge cases tested.
-- ✅ Power Optimizer: Fully implemented, tested, and passing all testbenches (100% pass rate).
-- ✅ Power Optimizer Test-bench: Comprehensive, covers all power management, DVFS, gating, and emergency scenarios.
-- ✅ Workload Classifier: Fully implemented, AI-inspired workload monitoring.
-- ✅ Workload Classifier Test-bench: Covers all workload types, adaptation, and learning scenarios.
-- ✅ Clock Manager: Complete, with simulation-optimized version and testbench.
-- ✅ Clock Manager Test-bench: Verifies frequency scaling, lock, and reset behavior.
-- ✅ LED Display: Fully implemented, simulation-optimized, and tested.
-- 🚧 Complete Core: Almost done.
-- 📋 FPGA Implementation: Planned.
-- 📋 Final Testing with Video: Planned.
+This project implements a complete RISC-V RV32I processor with two notable enhancements beyond standard academic implementations:
 
-## 🏗️ Architecture
-[Will add more detail and a block diagram soon.]
-- Modular, test-driven Verilog design.
-- Adaptive branch prediction, AI-inspired workload classification, and power management integrated into the core pipeline.
-- All modules verified with custom testbenches and simulation.
-- **Simulation-Optimized Top:** The current top-level (`system_top.v`) is a minimal interface for simulation, with a fixed instruction generator. The processor core (`enhanced_core`) is unchanged for accurate verification.
+**Branch Predictor** - An ensemble prediction algorithm that combines global and local history with dynamic confidence tracking. The predictor learns patterns in real-time and achieves ~95% accuracy in simulation.
 
-## 🛠️ Development Environment
-Z7-20 FPGA with Xilinx XC7Z020-1CLG400C on Vivado written in Verilog, verified using custom testbenches with comprehensive coverage. Visit the documents folder for testbench simulation results.
+**Power Optimizer** - A workload-aware power manager that classifies instruction patterns and dynamically adjusts voltage, frequency, and component power gating. Testing shows ~40% power reduction compared to baseline operation.
 
-### 📁 Structure
+## Architecture
+
+The processor uses a 5-stage pipeline (Fetch, Decode, Execute, Memory, Writeback) with the following major components:
+
+- **32-Bit Arithmetic Logic Unit (ALU):** Full RV32I instruction support with integrated power monitoring.
+- **32×32-Bit Register File:** General-purpose register file with access tracking and usage statistics.
+- **Instruction Decoder:** Decodes all RV32I instructions and generates control signals for the pipeline.
+- **Branch Predictor:** Two-level adaptive algorithm with global and local history, branch-type specialization, and confidence weighting.
+- **Workload Classifier:** Real-time analysis of instruction streams to classify workload types (compute, memory, control, mixed, etc.).
+- **Power Optimizer:** Dynamically manages DVFS (dynamic voltage and frequency scaling), power gating, and thermal throttling based on workload and system constraints.
+- **Clock Manager:** Supports multiple frequency levels for power scaling and adapts to power/thermal conditions.
+- **Top Module:** Integrates all subsystems, manages I/O, and coordinates demo/FPGA-specific features.
+- **LED Display Controller:** Drives the hardware demo interface, providing real-time feedback on processor state and optimizations.
+- **Testbenches:** For all major modules, enabling thorough verification and validation.
+
+The design targets the Xilinx XC7Z020-1CLG400C FPGA and includes comprehensive verification testbenches.
+
+## Performance Results
+
+Simulation results from comprehensive testing:
+
+| Metric | Value | Notes |
+|--------|--------|-------|
+| Branch Prediction Accuracy | ~95% | 96 correct out of 101 predictions |
+| Workload Classification | ~95% | Across mixed instruction patterns |
+| Power Reduction | ~40% | With workload-adaptive optimization |
+| Test Coverage | 100% | All 100+ test checks passed |
+
+The branch predictor demonstrates learning behavior, improving from initial poor performance to 95% accuracy as it adapts to instruction patterns. I didn't implement aggressive hazard mitigation or deep pipelining, therefore the IPC is on the lower side for a RISC-V implementation (around 0.2).
+
+## Interactive Hardware Demo
+
+The system includes an interactive demonstration mode for FPGA deployment. See [DEMO.md](DEMO.md) for complete details on the hardware interface, LED indicators, and demonstration phases.
+
+The demo showcases real-time branch predictor learning, power management adaptation, and workload classification across different instruction sequences.
+
+## Implementation Details
+
+### File Structure
 ```
-/risc-v-processor-fpga/
-├── build-project.tcl         # Vivado project build script
-├── constraints/              # FPGA constraints (pin mapping, timing)
-│   └── constraints.xdc
-├── docs/                     # Documentation and simulation results
-│   └── results/
-│       ├── alu-simulation-results.md
-│       ├── branch-predictor-simulation-results.md
-│       ├── clock-manager-simulation-results.md
-│       ├── core-simulation-results.md
-│       ├── decoder-simulation-results.md
-│       ├── enhanced-core-simulation-results.md
-│       ├── enhanced-decoder-simulation-results.md
-│       ├── power-optimizer-simulation-results.md
-│       ├── register-simulation-results.md
-│       └── workload_classifier-simulation-results.md
-├── srcs/                     # All source files
-│   ├── bd/                   # Block design (empty or for future use)
-│   ├── ip/                   # Custom or third-party IP blocks
-│   ├── rtl/                  # RTL (main Verilog modules)
-│   │   ├── alu.v
-│   │   ├── basic_instruction_decoder.v
-│   │   ├── branch_predictor.v
-│   │   ├── clock_manager.v
-│   │   ├── core.v
-│   │   ├── enhanced_core.v
-│   │   ├── instruction_decoder.v
-│   │   ├── led_display.v
-│   │   ├── power_optimizer.v
-│   │   ├── register.v
-│   │   ├── system_top.v      # Top-level system (simulation-optimized)
-│   │   └── workload_classifier.v
-│   └── sim/                  # Testbenches for simulation
-│       ├── alu_tb.v
-│       ├── basic_instruction_decoder_tb.v
-│       ├── branch_predictor_tb.v
-│       ├── clock_manager_tb.v
-│       ├── core_tb.v
-│       ├── enhanced_core_tb.v
-│       ├── instruction_decoder_tb.v
-│       ├── power_optimizer_tb.v
-│       ├── register_tb.v
-│       ├── system_tb.v       # System-level testbench
-│       └── workload_classifier_tb.v
+risc-v-processor-fpga/
+├── build-project.tcl                   # Vivado project generation script
+├── DEMO.md                             # Demo datasheet
+├── constraints/zybo_z7_20.xdc          # FPGA pin assignments and timing
+├── docs/results/                       # Simulation results and analysis
+├── srcs/rtl/                           # Verilog source modules
+│   ├── enhanced_core.v                 # Main processor with optimizations
+│   ├── branch_predictor.v              # Adaptive prediction algorithm  
+│   ├── power_optimizer.v               # Workload-aware power management
+│   ├── workload_classifier.v           # Instruction pattern analysis
+│   ├── instruction_decoder.v           # RISC-V instruction decoder
+│   ├── alu.v                           # Arithmetic logic unit
+│   └── [additional core modules]
+└── srcs/sim/                           # Detailed verification testbenches
+    ├── enhanced_core_tb.v              # System-level testing
+    ├── branch_predictor_tb.v           # Prediction algorithm verification
+    └── [component testbenches]
 ```
-### 📚 Features
-- Adaptive Confidence Branch Predictor: Custom branch prediction algorithm with confidence tracking, ensemble prediction, and local/global history.
-- Intelligent Power Management: Predictive power gating, dynamic voltage/frequency scaling, and emergency handling (fully functional).
-- AI-Inspired Workload Classifier: Real-time workload classification, adaptive learning, and pattern recognition for optimal power management.
-- Performance Monitoring: Real-time instruction, workload, and power analysis.
-- Professional Implementation: Standard design practices and documentation.
-- Clock Management: Simulation-optimized clock manager with frequency scaling and lock detection.
-- LED Status Display: Real-time system status and mode display, fully tested.
 
-## 🔬 Technical Highlights
-[Will update with time.]
-### Branch Predictor
-- Two-level adaptive predictor with global and local history.
-- Pattern table and confidence table for robust prediction.
-- Ensemble logic combines multiple prediction sources.
-- Real-time accuracy and performance monitoring.
-- Achieved >75% accuracy on realistic and random branch patterns.
-- 100% test pass rate on all testbench scenarios.
-- [Simulation Results (Branch Predictor)](docs/results/branch-predictor-simulation-results.md)
+### Development Environment
+- **Target FPGA:** Xilinx Zynq-7000 XC7Z020-1CLG400C (Zybo Z7-20)
+- **Development Tools:** AMD Vivado 2025.x with Verilog HDL
+- **Verification:** Custom testbenches with comprehensive coverage
+- **Build Automation:** TCL script for complete project recreation
 
-### Instruction Decoder
-- Fully RISC-V compliant, supports all RV32I instruction formats.
-- Decodes opcode, register fields, immediate values, and control signals.
-- Handles all edge cases and invalid instructions.
-- 100% test pass rate on all testbench scenarios.
-- [Simulation Results (Instruction Decoder)](docs/results/enhanced-decoder-simulation-results.md)
+### Algorithms
 
-### Power Optimizer
-- Fully implemented, tested, and verified (100% test pass rate).
-- Implements predictive power optimization, DVFS, power gating, thermal management, and emergency handling.
-- Adaptive learning and workload-aware power management.
-- [Simulation Results (Power Optimizer)](docs/results/power-optimizer-simulation-results.md)
+The branch predictor implements a two-level adaptive scheme with separate global and local history tables, as well as branch specialization. Confidence tracking enables ensemble prediction where multiple predictors contribute based on their reliability for specific patterns. It maintains a global register for capturing patterns, a pattern table that uses saturating counters to predict taken and not-taken, and a 4-bit confidence value that updates based on prediction correctness. On each branch resolution, the predictor goes to update the global and local histories, adjusts the pattern and confidence tables, and tracks accuracies at the same time. This allows teh predictor to be able to learn both the short-term and long-term patterns.
 
-### Workload Classifier
-- Fully implemented, AI-inspired workload monitoring and classification using real-time feature extraction, pattern recognition, and adaptive learning (inspired by clustering and ensemble methods).
-- Real-time feature extraction, pattern recognition, and adaptive learning.
-- Achieved >90% overall classification accuracy in comprehensive simulation.
-- 100% test pass rate on all workload formats and adaptation scenarios.
-- [Simulation Results (Workload Classifier)](docs/results/workload_classifier-simulation-results.md)
+The power optimizer extracts features from instruction streams (compute intensity, memory access patterns, control flow) and classifies workloads in real-time using predictive adaptation with buffers and trends. Power states are adjusted based on classification results and external constraints like thermal readings and power budgets. DVFS (dynamic voltage and frequency scaling) is scaled according to the given workload classification, performance mode, and thermal/power constraints. Power gating will also disable units from the enhanced core (such as the arithmetic logic unit, register, branch predictor, etc.) when idle or under lighter workloads. Thermal throttling is engaged when temperature or power goes past thresholds (including logic for recovering from this state).
 
-### Clock Manager
-- Simulation-optimized clock manager with frequency scaling, lock detection, and reset handling.
-- Fully verified with a dedicated testbench covering all frequency and reset scenarios.
-- [Simulation Results (Clock Manager)](docs/results/clock-manager-simulation-results.md)
+## Verification and Testing
 
-### LED Display
-- Real-time system status and mode display for both simulation and hardware.
-- Supports multiple display modes and status indicators.
+The design includes extensive verification through custom testbenches that exercise all major functionality:
 
-### Register
-- 32 registers, 32-bit each and RISC-V compliant.
-- Real-time access tracking and power monitoring.
-- Most-used register identification.
+- **Component-level Testing** for the arithmetic logic unit, register file, predictors, and other specialized units
+- **Integration Testing** with realistic instruction sequences and mixed workloads  
+- **Stress Testing** for power management under various thermal and budget constraints
+- **Performance Regression Testing** to validate optimization effectiveness
 
-### Arithmetic Logic Unit
-- Implements all RISC-V RV32I arithmetic and logic operations.
-- Custom power consumption modeling (8-22 power units).
-- Comprehensive performance monitoring.
-- 100% test pass rate (40/40 tests).
+All testbenches achieve 100% pass rates with comprehensive coverage of normal operation, edge cases, and error conditions. Simulation results are documented in the `docs/results/` directory.
 
-### Processor Core
-- Performance monitoring functional across processor.
-- Power tracking integrated throughout datapath.
-- 100% test coverage on all implemented modules.
+## Getting Started
 
-## 📎 Getting Started
-Prerequisites are AMD Vivado and a ZYNQ-7020 FPGA development board. Download the `build-project.tcl` file to recreate the project for implementation on your device.
+### Prerequisites
+- AMD Vivado 2025.x or later
+- Xilinx Zynq-7000 development board (Zybo Z7-20 recommended)
 
----
-## Contact
-**Sadad Haidari** | Computer Engineering Student | [LinkedIn](https://linkedin.com/in/sadadh)
+### Building the Project
+```bash
+# Clone repository
+git clone [sadadsh/risc-v-processor-fpga]
+cd risc-v-processor-fpga
 
-*Built with passion for computer architecture and digital design.*
+# Generate Vivado project
+vivado -mode tcl
+source build-project.tcl
+
+# Run simulations (optional, make chosen file top level beforehand)
+launch_simulation chosen_tb.v
+
+# Make sure system_top.v is top level module before programming the FPGA.
+
+# Synthesize -> Implement -> Generate Bitstream -> Hardware Manager -> Program
+```
+
+The `build-project.tcl` script automatically creates the complete Vivado project structure, imports all source files, applies constraints, and configures simulation and synthesis settings.
+
+## Project Scope
+
+This processor demonstrates computer architecture concepts including adaptive prediction algorithms, power-aware design, and workload characterization. The implementation goes incorporates research-level optimizations with measurable performance improvements.
+
+The design emphasizes practical engineering considerations like verification methodology, build automation, and hardware demonstration capabilities suitable for FPGA deployment.
 
 ---
 
+**Author:** Sadad Haidari | Computer Engineering Student | The George Washington University  
+**Contact:** [LinkedIn](https://linkedin.com/in/sadadh)

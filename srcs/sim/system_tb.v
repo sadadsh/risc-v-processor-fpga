@@ -1,15 +1,13 @@
-// ================================================================
-// System Top-Level Testbench - FOCUSED DEBUG VERSION
-// Essential debugging to identify enhanced_core execution issues
-// ================================================================
+// TOP LEVEL TESTBENCH
+// Engineer: Sadad Haidari
+//
+// This testbench validates the complete enhanced processor system with all innovations.
 
 `timescale 1ns / 1ps
 
 module system_tb();
 
-    // ================================================================
     // TESTBENCH SIGNALS
-    // ================================================================
     
     // FPGA board interface signals.
     reg clk;                      // 100MHz board clock.
@@ -65,10 +63,6 @@ module system_tb();
     integer stuckCounter;         // Counter for stuck detection.
     integer stressCount;          // Stress test counter.
     reg stabilityError;           // Stability error flag.
-
-    // ================================================================
-    // DEVICE UNDER TEST INSTANTIATION
-    // ================================================================
     
     system_top systemDUT (
         .clk(clk),
@@ -116,17 +110,13 @@ module system_tb();
     wire coreResetSignal;
     assign coreResetSignal = debug_processor_reset;
 
-    // ================================================================
-    // CLOCK GENERATION
-    // ================================================================
-    
-    // Generate 100MHz board clock.
+    // Generate 100MHz board clock
     initial begin
         clk = 1'b0;
-        forever #5 clk = ~clk; // 10ns period = 100MHz.
+        forever #5 clk = ~clk;
     end
-    
-    // Cycle counter for timeout protection.
+
+    // Cycle counter for timeout protection
     always @(posedge clk) begin
         cycleCount <= cycleCount + 1;
         if (cycleCount >= MAX_CYCLES) begin
@@ -136,11 +126,7 @@ module system_tb();
         end
     end
 
-    // ================================================================
-    // FOCUSED DEBUGGING MONITORING
-    // ================================================================
-    
-    // Track critical changes only.
+    // Monitor instruction progress and detect stalls
     always @(posedge clk) begin
         if (processorReset) begin
             // Check for instruction count changes (commented out for clean output).
@@ -168,8 +154,8 @@ module system_tb();
             // }
         end
     end
-    
-    // Status monitoring at key intervals.
+
+    // Status monitoring at key intervals
     always @(posedge clk) begin
         if (cycleCount == 100 || cycleCount == 1000 || cycleCount % 10000 == 0) begin
             $display("STATUS[%0d]: ClockLocked=%b, ProcReset=%b, PC=0x%08X, Inst=%0d", 
@@ -177,11 +163,9 @@ module system_tb();
         end
     end
 
-    // ================================================================
-    // TEST UTILITY TASKS
-    // ================================================================
-    
-    // Initialize testbench.
+    // Initialize Testbench and System
+    // Sets all inputs to safe states and applies reset
+    // Prints initial system state
     task initializeTest();
         begin
             $display("================================================================");
@@ -228,8 +212,8 @@ module system_tb();
                     validInstruction, instructionComplete, requestNextInstruction);
         end
     endtask
-    
-    // Execute a test with validation.
+
+    // Execute a Test and Print Result
     task executeTest(input [255:0] name, input condition);
         begin
             testCount = testCount + 1;
@@ -252,8 +236,8 @@ module system_tb();
             end
         end
     endtask
-    
-    // Wait cycles.
+
+    // Wait for # of Cycles
     task waitCycles(input integer cycles);
         integer i;
         begin
@@ -266,8 +250,8 @@ module system_tb();
             end
         end
     endtask
-    
-    // Wait for condition.
+
+    // Wait for a Condition or Timeout
     task waitForCondition(input [255:0] conditionName, input condition, input integer maxWait);
         integer waitCount;
         begin
@@ -291,7 +275,7 @@ module system_tb();
         end
     endtask
     
-    // Final report.
+    // Final Report
     task finalReport();
         begin
             $display("================================================================");
@@ -351,71 +335,41 @@ module system_tb();
         end
     endtask
 
-    // ================================================================
-    // MAIN TEST SEQUENCE
-    // ================================================================
-    
+    // Main Test Sequence
     initial begin
-        // Initialize testbench.
         initializeTest();
-        
-        // ============================================================
-        // TEST PHASE 1: System Initialization
-        // ============================================================
+        // Test Phase 1: System Initialization
         $display("\n*** TEST PHASE 1: System Initialization ***");
         testPhase = 4'd1;
-        
-        // Wait for clock lock.
         waitForCondition("Clock Lock", clockLocked, 5000);
         executeTest("Clock manager achieves lock", clockLocked == 1'b1);
-        
-        // Wait for processor activation.
         waitForCondition("Processor Active", processorReset, 2000);
         executeTest("Processor becomes active", processorReset == 1'b1);
-        
-        // Basic sanity checks.
-        executeTest("Frequency level reasonable", 
-                   (actualFrequencyLevel >= 3'd0) && (actualFrequencyLevel <= 3'd7));
-        
-        executeTest("Power state valid",
-                   (currentPowerState >= 3'd0) && (currentPowerState <= 3'd7));
-        
+        executeTest("Frequency level reasonable", (actualFrequencyLevel >= 3'd0) && (actualFrequencyLevel <= 3'd7));
+        executeTest("Power state valid", (currentPowerState >= 3'd0) && (currentPowerState <= 3'd7));
         executeTest("LEDs responding", led != 16'h0000);
-        
-        // ============================================================
-        // TEST PHASE 2: Enhanced Basic Operation Analysis
-        // ============================================================
+        // Test Phase 2: Enhanced Basic Operation Analysis
         $display("\n*** TEST PHASE 2: Enhanced Basic Operation Analysis ***");
         testPhase = 4'd2;
-        
-        // Record initial state.
         $display("Recording initial processor state:");
         $display("  Initial PC: 0x%08X", currentPC);
         $display("  Initial Instructions: %0d", totalInstructions);
         $display("  Initial Cycles: %0d", totalCycles);
         $display("  Initial Pipeline Stage: %0d", pipelineStage);
-        
         initialPC = currentPC;
         initialInstructions = totalInstructions;
         initialCycles = totalCycles;
-        
-        // Wait for processor execution.
         $display("Waiting 5000 cycles for processor execution...");
         waitCycles(5000);
-        
         $display("After 5000 cycles:");
         $display("  Final PC: 0x%08X (change: %0d)", currentPC, currentPC - initialPC);
         $display("  Final Instructions: %0d (change: %0d)", totalInstructions, totalInstructions - initialInstructions);
         $display("  Final Cycles: %0d (change: %0d)", totalCycles, totalCycles - initialCycles);
         $display("  Pipeline Stage: %0d", pipelineStage);
-        
         executeTest("Program counter advancing", currentPC != initialPC && currentPC !== 32'hxxxxxxxx);
         executeTest("Instructions executing", totalInstructions > initialInstructions && totalInstructions !== 32'hxxxxxxxx);
         executeTest("Cycles incrementing", totalCycles > initialCycles && totalCycles !== 32'hxxxxxxxx);
-        
-        // ============================================================
-        // TEST PHASE 3: Interface Testing
-        // ============================================================
+        // Test Phase 3: Interface Testing
         $display("\n*** TEST PHASE 3: Interface Testing ***");
         testPhase = 4'd3;
         
@@ -432,49 +386,26 @@ module system_tb();
         sw[3:0] = 4'd1; // Display mode 1.
         waitCycles(500);
         executeTest("Display modes functional", 1'b1);
-        
-        // Simplified button tests.
         executeTest("Demo mode activation", 1'b1);
         executeTest("Demo mode deactivation", 1'b1);
-        
-        // ============================================================
-        // TEST PHASE 4: Performance Monitoring
-        // ============================================================
+        // Test Phase 4: Performance Monitoring
         $display("\n*** TEST PHASE 4: Performance Monitoring ***");
         testPhase = 4'd4;
-        
-        // Monitor execution for performance metrics.
         waitCycles(10000);
-        
-        executeTest("Performance metrics updating", 
-                   totalInstructions > 0 && totalCycles > 0);
-        
-        executeTest("Power management active", 
-                   currentTotalPower > 0 && currentTotalPower < 255);
-        
-        executeTest("Branch predictor functional", 
-                   branchAccuracy <= 8'd100); // Valid percentage.
-        
-        // ============================================================
-        // TEST PHASE 5: Display and Output Testing
-        // ============================================================
+        executeTest("Performance metrics updating", totalInstructions > 0 && totalCycles > 0);
+        executeTest("Power management active", currentTotalPower > 0 && currentTotalPower < 255);
+        executeTest("Branch predictor functional", branchAccuracy <= 8'd100);
+        // Test Phase 5: Display and Output Testing
         $display("\n*** TEST PHASE 5: Display and Output Testing ***");
         testPhase = 4'd5;
-        
-        // Test 7-segment display.
         executeTest("7-segment display active", seg != 7'b1111111 || an != 4'b1111);
-        
-        // Test RGB LEDs.
         executeTest("RGB LEDs active", led16_r | led16_g | led16_b | led17_r | led17_g | led17_b);
         
         // Test UART (basic check).
         sw[13] = 1'b1; // Enable UART.
         waitCycles(2000);
         executeTest("UART interface functional", 1'b1);
-        
-        // ============================================================
-        // TEST PHASE 6: Stress Testing
-        // ============================================================
+        // Test Phase 6: Stress Testing
         $display("\n*** TEST PHASE 6: Short Stress Test ***");
         testPhase = 4'd6;
         
@@ -489,7 +420,6 @@ module system_tb();
                 stressCount = 5000; // Exit loop.
             end
         end
-        
         executeTest("Short-term stability", stabilityError == 1'b0);
         executeTest("Clock remains locked", clockLocked == 1'b1);
         executeTest("Processor remains active", processorReset == 1'b1);
@@ -498,20 +428,14 @@ module system_tb();
         // TEST COMPLETION
         // ============================================================
         finalReport();
-        
         if (failCount > 4) begin
             $display("\n⚠ CRITICAL: Core execution failure detected!");
             $display("  The enhanced_core module is not processing instructions correctly.");
         end
-        
         $finish;
     end
-    
-    // ================================================================
-    // SIMULATION MONITORING
-    // ================================================================
-    
-    // Progress reporting every 10,000 cycles.
+
+    // Progress reporting every 10,000 cycles
     always @(posedge clk) begin
         if (cycleCount % 10000 == 0 && cycleCount > 0) begin
             $display("PROGRESS[%0d]: Phase=%0d, Tests=%0d/%0d passed, PC=0x%08X, Inst=%0d", 

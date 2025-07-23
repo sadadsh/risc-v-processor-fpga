@@ -1,12 +1,7 @@
 `timescale 1ns / 1ps
 
-// ENHANCED PROCESSOR CORE - FPGA OPTIMIZED VERSION
+// ENHANCED PROCESSOR CORE
 // Engineer: Sadad Haidari
-// 
-// This enhanced RISC-V processor features:
-// 1. Adaptive Confidence Branch Predictor with pattern recognition
-// 2. Intelligent Power Management with workload classification
-// 3. FPGA-optimized design for Z7-20 implementation
 
 module enhanced_core (
     input wire clk,
